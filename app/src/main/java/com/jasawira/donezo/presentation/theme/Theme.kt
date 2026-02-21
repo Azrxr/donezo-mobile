@@ -1,6 +1,5 @@
-package com.jasawira.donezo.ui.theme
+package com.jasawira.donezo.presentation.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

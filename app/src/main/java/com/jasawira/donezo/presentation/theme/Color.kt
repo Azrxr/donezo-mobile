@@ -1,4 +1,4 @@
-package com.jasawira.donezo.ui.theme
+package com.jasawira.donezo.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 
