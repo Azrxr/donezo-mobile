@@ -1,18 +1,21 @@
+package com.jasawira.donezo.generate
+
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.hilt.android)
-    alias(libs.plugins.ksp)
+    alias(libs.plugins.compose.compiler)
+    kotlin("kapt")
 }
 
 android {
-    namespace = "com.jasawira.donezo"
-    compileSdk = 36
+    namespace = "com.example.checklistapp"
+    compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.jasawira.donezo"
+        applicationId = "com.example.checklistapp"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -31,15 +34,31 @@ android {
             )
         }
     }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
     buildFeatures {
         compose = true
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.3"
     }
 
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
 }
+
 dependencies {
     // AndroidX Core
     implementation(libs.androidx.core.ktx)
@@ -63,16 +82,16 @@ dependencies {
     // Room Database
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
+    kapt(libs.androidx.room.compiler)
 
     // Coroutines
+    implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlinx.coroutines.play.services)
 
-    // Hilt for Dependency Injection
+    // Hilt Dependency Injection
     implementation(libs.hilt.android)
-    implementation(libs.hilt.navigation.compose)
-    ksp(libs.hilt.compiler)
+    kapt(libs.hilt.android.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
 
     // Navigation Compose
     implementation(libs.androidx.navigation.compose)
@@ -86,14 +105,15 @@ dependencies {
     // Serialization
     implementation(libs.kotlinx.serialization.json)
 
-    // Google Play In-App Updates
-    implementation(libs.play.app.update)
-    implementation(libs.play.app.update.ktx)
-
     // Testing
     testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+}
+
+// Hilt kapt configuration
+kapt {
+    correctErrorTypes = true
 }
