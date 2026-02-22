@@ -1,17 +1,15 @@
 package com.jasawira.donezo.notification
 
-import android.Manifest
-import android.R
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
-import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.jasawira.donezo.MainActivity
 import com.jasawira.donezo.utils.AppConstants
 import kotlin.random.Random
+import android.Manifest
+import androidx.annotation.RequiresPermission
 
 
 /**
@@ -28,28 +26,27 @@ class NotificationManager(private val context: Context) {
      * Buat notification channel untuk Android 8+
      */
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val importance = android.app.NotificationManager.IMPORTANCE_DEFAULT
-            val channel = android.app.NotificationChannel(
-                AppConstants.NOTIFICATION_CHANNEL_ID,
-                AppConstants.NOTIFICATION_CHANNEL_NAME,
-                importance
-            ).apply {
-                description = "Notifikasi reminder untuk checklist items"
-                enableLights(true)
-                enableVibration(true)
-                setShowBadge(true)
-            }
-
-            val notificationManager = context.getSystemService(
-                Context.NOTIFICATION_SERVICE
-            ) as android.app.NotificationManager
-            notificationManager.createNotificationChannel(channel)
+        val importance = android.app.NotificationManager.IMPORTANCE_DEFAULT
+        val channel = android.app.NotificationChannel(
+            AppConstants.NOTIFICATION_CHANNEL_ID,
+            AppConstants.NOTIFICATION_CHANNEL_NAME,
+            importance
+        ).apply {
+            description = "Notifikasi reminder untuk checklist items"
+            enableLights(true)
+            enableVibration(true)
+            setShowBadge(true)
         }
+
+        val notificationManager = context.getSystemService(
+            Context.NOTIFICATION_SERVICE
+        ) as android.app.NotificationManager
+        notificationManager.createNotificationChannel(channel)
     }
 
     /**
      * Tampilkan notifikasi reminder
+     * Dipanggil saat alarm trigger
      */
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     fun showNotification(
@@ -81,12 +78,13 @@ class NotificationManager(private val context: Context) {
             context,
             AppConstants.NOTIFICATION_CHANNEL_ID
         )
-            .setSmallIcon(R.drawable.ic_dialog_info)
+            .setSmallIcon(com.jasawira.donezo.R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(message)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
             .setVibrate(longArrayOf(0, 500, 200, 500))
             .build()
 
@@ -97,6 +95,7 @@ class NotificationManager(private val context: Context) {
     /**
      * Cancel notifikasi
      */
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     fun cancelNotification(notificationId: Int) {
         NotificationManagerCompat.from(context).cancel(notificationId)
     }
@@ -104,7 +103,9 @@ class NotificationManager(private val context: Context) {
     /**
      * Cancel all notifications
      */
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     fun cancelAllNotifications() {
         NotificationManagerCompat.from(context).cancelAll()
     }
 }
+

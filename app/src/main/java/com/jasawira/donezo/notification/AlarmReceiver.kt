@@ -10,7 +10,6 @@ import androidx.annotation.RequiresPermission
  * BroadcastReceiver yang menangani trigger alarm dari AlarmManager
  */
 class AlarmReceiver : android.content.BroadcastReceiver() {
-    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == "com.example.checklistapp.ALARM_TRIGGER") {
             val itemId = intent.getStringExtra("itemId") ?: return

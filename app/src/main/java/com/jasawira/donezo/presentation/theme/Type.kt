@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.sp
 /**
  * TYPOGRAPHY CONFIGURATION
  * Material 3 Typography dengan 12 text styles
- *
+ * 
  * Display: Ukuran besar untuk title screen
  * Headline: Untuk section headers
  * Title: Untuk card titles, dialog titles

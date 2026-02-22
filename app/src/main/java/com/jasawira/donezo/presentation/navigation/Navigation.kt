@@ -50,10 +50,7 @@ fun ChecklistAppNavGraph(
                 onCardClick = { cardId ->
                     navController.navigate(NavigationRoutes.cardDetailRoute(cardId))
                 },
-                onNavigateToCategory = {
-                    navController.navigate(NavigationRoutes.MANAGE_CATEGORY)
-                },
-                onNavigateToSettings = {
+                onMenuClick = {
                     navController.navigate(NavigationRoutes.SETTINGS)
                 }
             )
@@ -64,7 +61,7 @@ fun ChecklistAppNavGraph(
             val cardId = backStackEntry.arguments?.getString("cardId") ?: ""
             CardDetailScreen(
                 cardId = cardId,
-                onBack = {
+                onBackClick = {
                     navController.popBackStack()
                 }
             )
