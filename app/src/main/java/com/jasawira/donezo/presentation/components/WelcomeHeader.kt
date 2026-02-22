@@ -20,7 +20,7 @@ import androidx.compose.ui.window.Dialog
 @Composable
 fun WelcomeHeader(
     modifier: Modifier = Modifier,
-    userName: String = "Alex",
+    userName: String = "Sobat",
     onUserNameChange: (String) -> Unit = {}
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
@@ -31,9 +31,20 @@ fun WelcomeHeader(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // "Halo, Alex?"
+        // "Halo, {UserName}?"
         Text(
-            text = "Halo, $userName?",
+            text = buildAnnotatedString {
+                append("Halo, ")
+                withStyle(
+                    style = SpanStyle(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                ) {
+                    append(userName)
+                }
+                append("?")
+            },
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Normal,
             color = MaterialTheme.colorScheme.onBackground,
@@ -42,17 +53,10 @@ fun WelcomeHeader(
 
         // "Mari selesaikan."
         Text(
-            text = buildAnnotatedString {
-                withStyle(
-                    style = SpanStyle(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                ) {
-                    append("Mari selesaikan.")
-                }
-            },
-            style = MaterialTheme.typography.headlineMedium
+            text = "Mari selesaikan.",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold
         )
     }
 

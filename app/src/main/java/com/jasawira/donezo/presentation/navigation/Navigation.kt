@@ -20,6 +20,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.jasawira.donezo.presentation.screen.HomeScreenRedesign
 import com.jasawira.donezo.presentation.screen.CardDetailScreenRedesign
+import com.jasawira.donezo.presentation.screen.SettingsScreen
 
 /**
  * Navigation Routes
@@ -52,6 +53,9 @@ fun ChecklistAppNavGraph(
                 },
                 onMenuClick = {
                     navController.navigate(NavigationRoutes.SETTINGS)
+                },
+                onSettingsClick = {
+                    navController.navigate(NavigationRoutes.SETTINGS)
                 }
             )
         }
@@ -76,10 +80,10 @@ fun ChecklistAppNavGraph(
             )
         }
 
-        // SETTINGS PLACEHOLDER
+        // SETTINGS SCREEN
         composable(NavigationRoutes.SETTINGS) {
-            SettingsPlaceholder(
-                onBack = {
+            SettingsScreen(
+                onBackClick = {
                     navController.popBackStack()
                 }
             )
@@ -119,36 +123,5 @@ fun ManageCategoryPlaceholder(onBack: () -> Unit = {}) {
     }
 }
 
-/**
- * Placeholder untuk Settings Screen
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SettingsPlaceholder(onBack: () -> Unit = {}) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Settings") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Settings - Coming Soon")
-        }
-    }
-}
 
 

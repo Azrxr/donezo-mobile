@@ -1,5 +1,6 @@
 package com.jasawira.donezo.presentation.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jasawira.donezo.domain.model.Card
@@ -14,7 +15,9 @@ import com.jasawira.donezo.presentation.uistate.HomeUiEvent
 import com.jasawira.donezo.presentation.uistate.HomeUiState
 import com.jasawira.donezo.presentation.uistate.CardPreview
 import com.jasawira.donezo.presentation.uistate.SnackbarEvent
+import com.jasawira.donezo.presentation.utils.UserPreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -41,12 +44,22 @@ class HomeViewModel @Inject constructor(
     private val cardRepository: CardRepository,
     private val categoryRepository: CategoryRepository,
     private val checklistRepository: ChecklistRepository,
-    private val searchRepository: SearchRepository
+    private val searchRepository: SearchRepository,
+    @ApplicationContext context: Context
 ) : ViewModel() {
+
+    // USER PREFERENCES - lazy initialization
+    private val userPreferences: UserPreferencesManager by lazy {
+        UserPreferencesManager(context)
+    }
 
     // UI STATE
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    // USERNAME STATE
+    private val _userName = MutableStateFlow("Sobat")
+    val userName: StateFlow<String> = _userName.asStateFlow()
 
     // SNACKBAR EVENT
     private val _snackbarEvent = MutableSharedFlow<SnackbarEvent>()
@@ -56,15 +69,13 @@ class HomeViewModel @Inject constructor(
     private val _filterOptions = MutableStateFlow(FilterOptions())
     private val _searchQuery = MutableStateFlow("")
 
-    // USER NAME
-    private val _userName = MutableStateFlow("Alex")
-    val userName: StateFlow<String> = _userName.asStateFlow()
 
     // ALL DATA
     private val _allCards = cardRepository.getAllCards()
     private val _allCategories = categoryRepository.getAllCategories()
 
     init {
+        loadUserNameFromPreferences()
         loadHomeData()
     }
 
@@ -290,6 +301,28 @@ class HomeViewModel @Inject constructor(
      */
     fun updateUserName(newName: String) {
         _userName.value = newName
+        userPreferences.setUsername(newName)
+    }
+
+    /**
+     * Load username dari preferences saat init
+     */
+    fun loadUserNameFromPreferences() {
+        _userName.value = userPreferences.getUsername()
+    }
+
+    /**
+     * Get color preset
+     */
+    fun getColorPreset(): Int {
+        return userPreferences.getColorPreset()
+    }
+
+    /**
+     * Set color preset
+     */
+    fun setColorPreset(colorPresetId: Int) {
+        userPreferences.setColorPreset(colorPresetId)
     }
 
     /**
