@@ -8,9 +8,11 @@ import com.jasawira.donezo.domain.model.ChecklistStatus
 import com.jasawira.donezo.domain.model.FilterOptions
 import com.jasawira.donezo.domain.repository.CardRepository
 import com.jasawira.donezo.domain.repository.CategoryRepository
+import com.jasawira.donezo.domain.repository.ChecklistRepository
 import com.jasawira.donezo.domain.repository.SearchRepository
 import com.jasawira.donezo.presentation.uistate.HomeUiEvent
 import com.jasawira.donezo.presentation.uistate.HomeUiState
+import com.jasawira.donezo.presentation.uistate.CardPreview
 import com.jasawira.donezo.presentation.uistate.SnackbarEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -19,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -37,6 +40,7 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val cardRepository: CardRepository,
     private val categoryRepository: CategoryRepository,
+    private val checklistRepository: ChecklistRepository,
     private val searchRepository: SearchRepository
 ) : ViewModel() {
 
@@ -51,6 +55,10 @@ class HomeViewModel @Inject constructor(
     // FILTER OPTIONS
     private val _filterOptions = MutableStateFlow(FilterOptions())
     private val _searchQuery = MutableStateFlow("")
+
+    // USER NAME
+    private val _userName = MutableStateFlow("Alex")
+    val userName: StateFlow<String> = _userName.asStateFlow()
 
     // ALL DATA
     private val _allCards = cardRepository.getAllCards()
@@ -236,12 +244,12 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * Add new card
+     * Add new card dengan random color preset
      */
     fun addCard(
         name: String,
         categoryId: String,
-        colorPresetId: Int
+        colorPresetId: Int = kotlin.random.Random.nextInt(0, 10) // Random color 0-9
     ) {
         if (name.isBlank()) {
             viewModelScope.launch {
@@ -275,6 +283,13 @@ class HomeViewModel @Inject constructor(
                 _snackbarEvent.emit(SnackbarEvent.Error("Gagal membuat card: ${e.message}"))
             }
         }
+    }
+
+    /**
+     * Update user name
+     */
+    fun updateUserName(newName: String) {
+        _userName.value = newName
     }
 
     /**

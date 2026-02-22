@@ -7,6 +7,15 @@ import com.jasawira.donezo.domain.model.ChecklistItem
 import com.jasawira.donezo.domain.model.FilterOptions
 
 /**
+ * Card Preview untuk Home Screen
+ * Berisi card data + preview items (max 3)
+ */
+data class CardPreview(
+    val card: Card,
+    val previewItems: List<ChecklistItem> = emptyList()
+)
+
+/**
  * UI STATE untuk Home Screen
  * Menggunakan sealed class untuk type-safe state handling
  */
@@ -14,6 +23,7 @@ sealed class HomeUiState {
     object Loading : HomeUiState()
     data class Success(
         val cards: List<Card> = emptyList(),
+        val cardPreviews: List<CardPreview> = emptyList(),
         val categories: List<Category> = emptyList(),
         val filteredCards: List<Card> = emptyList(),
         val filterOptions: FilterOptions = FilterOptions(),

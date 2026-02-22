@@ -18,8 +18,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.jasawira.donezo.presentation.screen.HomeScreen
-import com.jasawira.donezo.presentation.screen.CardDetailScreen
+import com.jasawira.donezo.presentation.screen.HomeScreenRedesign
+import com.jasawira.donezo.presentation.screen.CardDetailScreenRedesign
 
 /**
  * Navigation Routes
@@ -46,7 +46,7 @@ fun ChecklistAppNavGraph(
     ) {
         // HOME SCREEN
         composable(NavigationRoutes.HOME) {
-            HomeScreen(
+            HomeScreenRedesign(
                 onCardClick = { cardId ->
                     navController.navigate(NavigationRoutes.cardDetailRoute(cardId))
                 },
@@ -59,7 +59,7 @@ fun ChecklistAppNavGraph(
         // CARD DETAIL SCREEN
         composable(NavigationRoutes.CARD_DETAIL) { backStackEntry ->
             val cardId = backStackEntry.arguments?.getString("cardId") ?: ""
-            CardDetailScreen(
+            CardDetailScreenRedesign(
                 cardId = cardId,
                 onBackClick = {
                     navController.popBackStack()

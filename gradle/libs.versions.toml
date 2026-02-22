@@ -17,6 +17,7 @@ kotlinxCoroutines = "1.7.3"
 hilt = "2.59.1"
 hiltNavigationCompose = "1.2.0"
 ksp = "2.1.0-1.0.29"
+reorderable = "0.9.6"
 room = "2.7.0-alpha11"
 ui = "1.10.3"
 playCore = "1.10.3"
@@ -70,6 +71,7 @@ hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-com
 androidx-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+reorderable = { module = "org.burnoutcrew.composereorderable:reorderable", version.ref = "reorderable" }
 
 [plugins]
 #kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

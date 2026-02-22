@@ -2,8 +2,6 @@ package com.jasawira.donezo.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.jasawira.donezo.domain.model.Card
-import com.jasawira.donezo.domain.model.CardWithChecklistItems
 import com.jasawira.donezo.domain.model.ChecklistItem
 import com.jasawira.donezo.domain.repository.CardRepository
 import com.jasawira.donezo.domain.repository.ChecklistRepository
@@ -17,7 +15,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.util.UUID
@@ -53,6 +50,14 @@ class CardDetailViewModel @Inject constructor(
     // CURRENT CARD ID
     private val _currentCardId = MutableStateFlow<String?>(null)
     val currentCardId: StateFlow<String?> = _currentCardId.asStateFlow()
+
+    // SELECTED ITEMS (for multi-select delete)
+    private val _selectedItems = MutableStateFlow<Set<String>>(emptySet())
+    val selectedItems: StateFlow<Set<String>> = _selectedItems.asStateFlow()
+
+    // NEW ITEM INPUT
+    private val _newItemName = MutableStateFlow("")
+    val newItemName: StateFlow<String> = _newItemName.asStateFlow()
 
     /**
      * Load card detail dengan items
@@ -386,9 +391,149 @@ class CardDetailViewModel @Inject constructor(
     }
 
     /**
+     * Toggle item selection
+     */
+    fun toggleItemSelection(itemId: String) {
+        _selectedItems.value = if (_selectedItems.value.contains(itemId)) {
+            _selectedItems.value - itemId
+        } else {
+            _selectedItems.value + itemId
+        }
+    }
+
+    /**
+     * Clear all selections
+     */
+    fun clearSelection() {
+        _selectedItems.value = emptySet()
+    }
+
+    /**
+     * Delete selected items
+     */
+    fun deleteSelectedItems() {
+        viewModelScope.launch {
+            try {
+                _selectedItems.value.forEach { itemId ->
+                    checklistRepository.deleteItem(itemId)
+                    // Cancel notification jika ada
+                    alarmScheduler.cancelItemNotifications(itemId)
+                }
+
+                _snackbarEvent.emit(
+                    SnackbarEvent.Success("${_selectedItems.value.size} item berhasil dihapus")
+                )
+
+                clearSelection()
+                _currentCardId.value?.let { loadCardDetail(it) }
+            } catch (e: Exception) {
+                _snackbarEvent.emit(SnackbarEvent.Error("Gagal menghapus item"))
+            }
+        }
+    }
+
+    /**
+     * Update new item name input
+     */
+    fun updateNewItemName(name: String) {
+        _newItemName.value = name
+    }
+
+    /**
+     * Add new item inline
+     */
+    fun addNewItemInline() {
+        if (_newItemName.value.isBlank()) {
+            viewModelScope.launch {
+                _snackbarEvent.emit(SnackbarEvent.Error("Nama item tidak boleh kosong"))
+            }
+            return
+        }
+
+        _currentCardId.value?.let { cardId ->
+            // Create new checklist item
+            val newItem = ChecklistItem(
+                id = UUID.randomUUID().toString(),
+                cardId = cardId,
+                itemName = _newItemName.value,
+                isChecked = false,
+                deadline = null,
+                notificationTime = null,
+                notificationMinutesBefore = 30,
+                isNotificationEnabled = false,
+                position = 0,
+                createdAt = LocalDateTime.now()
+            )
+
+            onEvent(CardDetailUiEvent.AddItem(newItem))
+            _newItemName.value = "" // Clear input after add
+        }
+    }
+
+    /**
+     * Reorder items
+     */
+    fun reorderItems(fromIndex: Int, toIndex: Int) {
+        viewModelScope.launch {
+            try {
+                val currentState = _uiState.value
+                if (currentState is CardDetailUiState.Success && currentState.cardWithItems != null) {
+                    val items = currentState.cardWithItems.items.toMutableList()
+                    val item = items.removeAt(fromIndex)
+                    items.add(toIndex, item)
+
+                    // Update positions
+                    items.forEachIndexed { index, checklistItem ->
+                        checklistRepository.updateItemPosition(checklistItem.id, index)
+                    }
+
+                    _currentCardId.value?.let { loadCardDetail(it) }
+                }
+            } catch (e: Exception) {
+                _snackbarEvent.emit(SnackbarEvent.Error("Gagal mengatur ulang item"))
+            }
+        }
+    }
+
+    /**
      * Refresh card detail
      */
     private fun refreshCardDetail() {
         _currentCardId.value?.let { loadCardDetail(it) }
+    }
+
+    /**
+     * Add new item dengan detail lengkap dari bottom sheet
+     */
+    fun addNewItemWithDetails(
+        itemName: String,
+        deadline: java.time.LocalDate?,
+        notificationTime: java.time.LocalTime?,
+        isNotificationEnabled: Boolean,
+        notificationMinutesBefore: Int
+    ) {
+        if (itemName.isBlank()) {
+            viewModelScope.launch {
+                _snackbarEvent.emit(SnackbarEvent.Error("Nama item tidak boleh kosong"))
+            }
+            return
+        }
+
+        _currentCardId.value?.let { cardId ->
+            val newItem = ChecklistItem(
+                id = UUID.randomUUID().toString(),
+                cardId = cardId,
+                itemName = itemName,
+                isChecked = false,
+                deadline = deadline,
+                notificationTime = notificationTime,
+                notificationMinutesBefore = notificationMinutesBefore,
+                isNotificationEnabled = isNotificationEnabled,
+                position = 0,
+                createdAt = LocalDateTime.now()
+            )
+
+            onEvent(CardDetailUiEvent.AddItem(newItem))
+        }
     }
 }

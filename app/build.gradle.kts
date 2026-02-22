@@ -80,6 +80,9 @@ dependencies {
     // Navigation Compose
     implementation(libs.androidx.navigation.compose)
 
+    // Reorderable (Drag and Drop)
+    implementation(libs.reorderable)
+
     // WorkManager (for notifications)
     implementation(libs.androidx.work.runtime.ktx)
 
