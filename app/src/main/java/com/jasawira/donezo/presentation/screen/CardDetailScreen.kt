@@ -210,11 +210,13 @@ fun CardDetailScreenRedesign(
                             ReorderableItemWrapper(
                                 isSelected = selectedItems.contains(item.id),
                                 onTap = {
+                                    // Toggle selection hanya jika sudah ada selection
                                     if (selectedItems.isNotEmpty()) {
                                         viewModel.toggleItemSelection(item.id)
                                     }
                                 },
                                 onLongPress = {
+                                    // Long press selalu toggle selection (first long press akan select)
                                     viewModel.toggleItemSelection(item.id)
                                 }
                             ) {

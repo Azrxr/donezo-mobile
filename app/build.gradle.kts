@@ -24,11 +24,35 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Enable debug symbols untuk Play Store
+            isDebuggable = false
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
+        }
+        debug {
+            isMinifyEnabled = false
+            debuggable = true
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
+        }
+    }
+
+    bundle {
+        language {
+            enableSplit = true
+        }
+        density {
+            enableSplit = true
+        }
+        abi {
+            enableSplit = true
         }
     }
     buildFeatures {

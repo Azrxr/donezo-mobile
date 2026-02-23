@@ -5,17 +5,72 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Preserve line numbers for debugging stack traces
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# ============ Hilt Dependency Injection ============
+-keep @dagger.hilt.android.HiltAndroidApp class * { *; }
+-keep @dagger.hilt.android.lifecycle.HiltViewModel class * { *; }
+-keep @dagger.hilt.android.AndroidEntryPoint class * { *; }
+-keep interface dagger.hilt.** { *; }
+-keepclasseswithmembernames class * {
+    @dagger.hilt.* <methods>;
+    @dagger.hilt.* <fields>;
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# ============ Room Database ============
+-keep @androidx.room.Entity class * { *; }
+-keep @androidx.room.Dao class * { *; }
+-keep @androidx.room.Database class * { *; }
+-keepclasseswithmembernames class * {
+    @androidx.room.* <methods>;
+    @androidx.room.* <fields>;
+}
+
+# ============ Kotlin Serialization ============
+-keepattributes *Annotation*
+-keep @kotlinx.serialization.Serializable class * { *; }
+-keepclassmembers class * {
+    @kotlinx.serialization.* <methods>;
+}
+
+# ============ Jetpack Compose ============
+-keep @androidx.compose.runtime.Composable class * { *; }
+-keepclasseswithmembernames class * {
+    @androidx.compose.runtime.Composable <methods>;
+}
+
+# ============ AndroidX Core ============
+-keep class androidx.lifecycle.** { *; }
+-keep class androidx.navigation.** { *; }
+-keep class androidx.work.** { *; }
+
+# ============ Your App Classes ============
+-keep class com.jasawira.donezo.domain.** { *; }
+-keep class com.jasawira.donezo.data.** { *; }
+-keep class com.jasawira.donezo.presentation.** { *; }
+
+# ============ Enum Classes ============
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+# ============ Data Classes & Models ============
+-keep class com.jasawira.donezo.domain.model.** { *; }
+-keep class com.jasawira.donezo.data.local.entity.** { *; }
+
+# ============ Keep All Public Methods ============
+-keepclassmembers class * {
+    public <methods>;
+}
+
+# ============ Suppress Warnings ============
+-dontwarn kotlin.**
+-dontwarn kotlinx.**
+-dontwarn android.**
+-dontwarn androidx.**
+-ignorewarnings
+
+
