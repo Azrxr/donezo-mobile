@@ -413,44 +413,55 @@ class CardDetailViewModel @Inject constructor(
      */
     fun deleteSelectedItems() {
         viewModelScope.launch {
-            try {
-                _selectedItems.value.forEach { itemId ->
-                    checklistRepository.deleteItem(itemId)
-                    // Cancel notification jika ada
-                    alarmScheduler.cancelItemNotifications(itemId)
+            var successCount = 0
+            var failCount = 0
+
+            _selectedItems.value.forEach { itemId ->
+                try {
+                    val result = checklistRepository.deleteItem(itemId)
+                    if (result) successCount++ else failCount++
+                } catch (e: Exception) {
+                    failCount++
                 }
+            }
 
+            clearSelection()
+
+            if (successCount > 0) {
                 _snackbarEvent.emit(
-                    SnackbarEvent.Success("${_selectedItems.value.size} item berhasil dihapus")
+                    SnackbarEvent.Success("$successCount item berhasil dihapus")
                 )
-
-                clearSelection()
-                _currentCardId.value?.let { loadCardDetail(it) }
-            } catch (e: Exception) {
-                _snackbarEvent.emit(SnackbarEvent.Error("Gagal menghapus item"))
+            }
+            if (failCount > 0) {
+                _snackbarEvent.emit(
+                    SnackbarEvent.Error("$failCount item gagal dihapus")
+                )
             }
         }
     }
 
     /**
-     * Mark selected items as completed
+     * Tandai items yang dipilih sebagai selesai
      */
     fun markSelectedItemsAsCompleted() {
         viewModelScope.launch {
-            try {
-                _selectedItems.value.forEach { itemId ->
-                    checklistRepository.updateItemCheckedStatus(itemId, true)
+            _selectedItems.value.forEach { itemId ->
+                try {
+                    val item = (_uiState.value as? CardDetailUiState.Success)
+                        ?.cardWithItems?.items?.find { it.id == itemId }
+                    if (item != null) {
+                        onEvent(
+                            CardDetailUiEvent.ChecklistItemStatusChanged(itemId, true)
+                        )
+                    }
+                } catch (e: Exception) {
+                    _snackbarEvent.emit(
+                        SnackbarEvent.Error("Gagal tandai selesai")
+                    )
                 }
-
-                _snackbarEvent.emit(
-                    SnackbarEvent.Success("${_selectedItems.value.size} item ditandai selesai")
-                )
-
-                clearSelection()
-                _currentCardId.value?.let { loadCardDetail(it) }
-            } catch (e: Exception) {
-                _snackbarEvent.emit(SnackbarEvent.Error("Gagal menandai item selesai"))
             }
+            clearSelection()
+            _snackbarEvent.emit(SnackbarEvent.Success("Items ditandai selesai"))
         }
     }
 

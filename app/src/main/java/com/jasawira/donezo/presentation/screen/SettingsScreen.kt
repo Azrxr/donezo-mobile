@@ -13,7 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.jasawira.donezo.presentation.theme.Spacing
 import com.jasawira.donezo.presentation.utils.UserPreferencesManager
-
+import com.jasawira.donezo.presentation.utils.AppVersionUtils
 /**
  * SettingsScreen
  * Halaman settings untuk mengatur theme
@@ -187,8 +187,7 @@ fun SettingsSectionAbout(modifier: Modifier = Modifier) {
                 verticalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
                 AboutItem(label = "Nama Aplikasi", value = "Donezo")
-                AboutItem(label = "Versi", value = "1.0.0")
-                AboutItem(label = "Developer", value = "Jasawira Team")
+                AboutItem(label = "Versi", value = "${AppVersionUtils.getVersionName()}")
             }
         }
     }

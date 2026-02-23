@@ -24,7 +24,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.jasawira.donezo.presentation.components.*
@@ -382,6 +384,8 @@ fun ReorderableItemWrapper(
     onLongPress: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    val hapticFeedback = LocalHapticFeedback.current
+
     // Shake animation for selected items (edit mode)
     val rotationAngle = remember { Animatable(0f) }
     
@@ -443,7 +447,10 @@ fun ReorderableItemWrapper(
                         isPressed = false
                     },
                     onTap = { onTap() },
-                    onLongPress = { onLongPress() }
+                    onLongPress = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onLongPress()
+                    }
                 )
             }
     ) {

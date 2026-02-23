@@ -40,8 +40,7 @@ fun CompactCardComponent(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp)
-            .clickable { onCardClick() },
+            .padding(horizontal = 20.dp, vertical = 8.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor

@@ -21,11 +21,13 @@ import androidx.navigation.compose.rememberNavController
 import com.jasawira.donezo.presentation.screen.HomeScreenRedesign
 import com.jasawira.donezo.presentation.screen.CardDetailScreenRedesign
 import com.jasawira.donezo.presentation.screen.SettingsScreen
+import com.jasawira.donezo.presentation.splash.SplashScreen
 
 /**
  * Navigation Routes
  */
 object NavigationRoutes {
+    const val SPLASH = "splash"
     const val HOME = "home"
     const val CARD_DETAIL = "card_detail/{cardId}"
     const val MANAGE_CATEGORY = "manage_category"
@@ -44,8 +46,19 @@ fun ChecklistAppNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = NavigationRoutes.HOME
+        startDestination = NavigationRoutes.SPLASH
     ) {
+        // SPLASH SCREEN
+        composable(NavigationRoutes.SPLASH) {
+            SplashScreen(
+                onTimeout = {
+                    navController.navigate(NavigationRoutes.HOME) {
+                        popUpTo(NavigationRoutes.SPLASH) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // HOME SCREEN
         composable(NavigationRoutes.HOME) {
             HomeScreenRedesign(
@@ -124,6 +137,3 @@ fun ManageCategoryPlaceholder(onBack: () -> Unit = {}) {
         }
     }
 }
-
-
-

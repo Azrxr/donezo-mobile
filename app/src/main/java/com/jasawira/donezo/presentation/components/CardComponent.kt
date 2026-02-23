@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -73,6 +74,11 @@ fun CardComponent(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .shadow(
+                elevation = 6.dp,
+                shape = RoundedCornerShape(12.dp),
+                spotColor = Color.Black.copy(alpha = 0.15f)
+            )
             .clip(RoundedCornerShape(12.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -80,15 +86,15 @@ fun CardComponent(
                 onClick = onCardClick
             )
             .border(
-                width = 1.dp,
-                color = colorPreset.borderColor.copy(alpha = 0.5f),
+                width = 1.5.dp,
+                color = colorPreset.borderColor.copy(alpha = 0.6f),
                 shape = RoundedCornerShape(12.dp)
             ),
         colors = CardDefaults.cardColors(
             containerColor = colorPreset.backgroundColor
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
+            defaultElevation = 0.dp
         )
     ) {
         Column(

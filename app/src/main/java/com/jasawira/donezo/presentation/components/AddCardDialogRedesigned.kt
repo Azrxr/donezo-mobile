@@ -45,7 +45,12 @@ fun AddCardDialogRedesigned(
     buttonColor: Color = Color(0xFF26D3C8)
 ) {
     var cardName by remember { mutableStateOf("") }
-    var selectedCategoryId by remember { mutableStateOf("uncategory") }
+
+    // Get Uncategorized category ID from list, atau gunakan placeholder
+    val uncategorizedCategory = categories.find { it.name.equals("Uncategorized", ignoreCase = true) }
+    val defaultCategoryId = uncategorizedCategory?.id ?: "uncategorized_default"
+
+    var selectedCategoryId by remember { mutableStateOf(defaultCategoryId) }
     var selectedColorPresetId by remember { mutableStateOf(kotlin.random.Random.nextInt(0, 10)) }
     var newCategoryName by remember { mutableStateOf("") }
     var showAddCategoryField by remember { mutableStateOf(false) }
@@ -116,14 +121,7 @@ fun AddCardDialogRedesigned(
                             .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                     ) {
-                        // Uncategory chip
-                        FilterChipItem(
-                            label = "Uncategory",
-                            isSelected = selectedCategoryId == "uncategory",
-                            onClick = { selectedCategoryId = "uncategory" }
-                        )
-
-                        // Existing categories
+                        // Existing categories from database
                         categories.forEach { category ->
                             FilterChipItem(
                                 label = category.name,

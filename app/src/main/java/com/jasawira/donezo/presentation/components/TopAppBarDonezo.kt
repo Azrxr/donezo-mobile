@@ -1,5 +1,6 @@
 package com.jasawira.donezo.presentation.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -7,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -28,6 +30,10 @@ fun TopAppBarDonezo(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .shadow(
+                elevation = 3.dp,
+                spotColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.1f)
+            )
             .padding(horizontal = Spacing.lg, vertical = Spacing.md)
     ) {
         // Header: Logo + Brand + Settings
@@ -43,7 +49,7 @@ fun TopAppBarDonezo(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Logo Icon
-                Icon(
+                Image(
                     painter = painterResource(id = R.drawable.ic_brand_nobg),
                     contentDescription = "Donezo Logo",
                     modifier = Modifier.size(32.dp)

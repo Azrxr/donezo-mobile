@@ -12,6 +12,9 @@ import com.jasawira.donezo.data.local.entity.CardEntity
 import com.jasawira.donezo.data.local.entity.CategoryEntity
 import com.jasawira.donezo.data.local.entity.ChecklistItemEntity
 import com.jasawira.donezo.utils.DateTimeConverters
+import androidx.room.RoomDatabase.Callback
+import java.time.LocalDateTime
+import java.util.UUID
 
 /**
  * Room Database Configuration
@@ -64,7 +67,36 @@ abstract class AppDatabase : RoomDatabase() {
                 AppDatabase::class.java,
                 DATABASE_NAME
             )
-                .fallbackToDestructiveMigration() // Untuk development
+                .addCallback(object : Callback() {
+                    override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                        super.onOpen(db)
+                        // Cek apakah table sudah memiliki data
+                        val cursor = db.query("SELECT COUNT(*) FROM categories")
+                        cursor.moveToFirst()
+                        val count = cursor.getInt(0)
+                        cursor.close()
+
+                        // Jika kosong, insert default categories
+                        if (count == 0) {
+                            val defaultCategories = arrayOf(
+                                arrayOf("uncategorized_default","Uncategorized", LocalDateTime.now().toString()),
+                                arrayOf("Work", LocalDateTime.now().toString()),
+                                arrayOf("Personal", LocalDateTime.now().toString()),
+                                arrayOf("Shopping", LocalDateTime.now().toString()),
+                                arrayOf("Health", LocalDateTime.now().toString()),
+                                arrayOf("Learning", LocalDateTime.now().toString())
+                            )
+
+                            defaultCategories.forEach { category ->
+                                db.execSQL(
+                                    "INSERT INTO categories (id, name, createdAt) VALUES (?, ?, ?)",
+                                    arrayOf(UUID.randomUUID().toString(), category[0], category[1])
+                                )
+                            }
+                        }
+                    }
+                })
+                .fallbackToDestructiveMigration()
                 .build()
         }
 
