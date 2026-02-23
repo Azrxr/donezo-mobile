@@ -1,50 +1,53 @@
 package com.jasawira.donezo.presentation.components
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.jasawira.donezo.domain.model.Category
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 /**
- * AddItemBottomSheet
- * Bottom sheet untuk tambah item baru dengan deadline dan notifikasi
+ * AddItemBottomSheet - Simplified
+ * Bottom sheet untuk tambah item baru
+ * Fields: Nama, Deadline (date + time), Reminder (time before)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddItemBottomSheet(
     modifier: Modifier = Modifier,
-    categories: List<Category> = emptyList(),
     onDismiss: () -> Unit = {},
     onAddItem: (
         itemName: String,
-        deadline: LocalDate?,
-        notificationTime: LocalTime?,
-        isNotificationEnabled: Boolean,
-        notificationMinutesBefore: Int,
-        categoryId: String?
-    ) -> Unit = { _, _, _, _, _, _ -> },
+        deadlineDate: LocalDate?,
+        deadlineTime: LocalTime?,
+        reminderMinutesBefore: Int?
+    ) -> Unit = { _, _, _, _ -> },
     buttonColor: Color = Color(0xFF26D3C8)
 ) {
     var itemName by remember { mutableStateOf("") }
-    var selectedDeadline by remember { mutableStateOf<LocalDate?>(null) }
-    var selectedNotificationTime by remember { mutableStateOf<LocalTime?>(null) }
-    var isNotificationEnabled by remember { mutableStateOf(false) }
-    var notificationMinutesBefore by remember { mutableStateOf(30) }
-    var selectedCategoryId by remember { mutableStateOf<String?>(null) }
-    var newCategoryName by remember { mutableStateOf("") }
-    var showAddCategoryField by remember { mutableStateOf(false) }
+    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
+    var selectedTime by remember { mutableStateOf<LocalTime?>(null) }
+    var selectedReminderMinutes by remember { mutableStateOf<Int?>(null) }
+
+    // Date Picker State
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
+
+    // Time Picker State
+    var showTimePicker by remember { mutableStateOf(false) }
+    val timePickerState = rememberTimePickerState()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -65,9 +68,9 @@ fun AddItemBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Tambah Item Baru",
+                    text = "Tambah Task Baru",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    fontWeight = FontWeight.Bold
                 )
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, contentDescription = "Tutup")
@@ -80,154 +83,85 @@ fun AddItemBottomSheet(
             OutlinedTextField(
                 value = itemName,
                 onValueChange = { itemName = it },
-                label = { Text("Nama Item") },
-                placeholder = { Text("Masukkan nama item...") },
+                label = { Text("Nama Task") },
+                placeholder = { Text("Masukkan nama task...") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
-            // Category Selection
-            Text(
-                text = "Kategori (Opsional)",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
-            )
-
-            if (!showAddCategoryField) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Existing categories
-                    categories.forEach { category ->
-                        FilterChipItem(
-                            label = category.name,
-                            isSelected = selectedCategoryId == category.id,
-                            onClick = { selectedCategoryId = category.id }
-                        )
-                    }
-
-                    // Add new category button
-                    Button(
-                        onClick = { showAddCategoryField = true },
-                        modifier = Modifier.height(40.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Tambah", modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Kategori Baru")
-                    }
-                }
-            } else {
-                // Add new category input
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = newCategoryName,
-                        onValueChange = { newCategoryName = it },
-                        label = { Text("Nama Kategori Baru") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    IconButton(
-                        onClick = {
-                            showAddCategoryField = false
-                            newCategoryName = ""
-                        },
-                        modifier = Modifier.align(Alignment.CenterVertically)
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = "Batal")
-                    }
-                }
-            }
-
             // Deadline Section
             Text(
                 text = "Deadline (Opsional)",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
             )
 
-            // Deadline Date Picker
+            // Date Picker Button
             OutlinedButton(
-                onClick = { /* TODO: Show date picker */ },
+                onClick = { showDatePicker = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
+                Icon(
+                    Icons.Default.DateRange,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (selectedDeadline != null) {
-                        "Tanggal: $selectedDeadline"
-                    } else {
-                        "Pilih Tanggal Deadline"
-                    }
+                    text = selectedDate?.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))
+                        ?: "Pilih Tanggal"
                 )
             }
 
-            // Notification Section
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            // Time Picker Button
+            OutlinedButton(
+                onClick = { showTimePicker = true },
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "Aktifkan Notifikasi",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                Icon(
+                    Icons.Default.Notifications,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
                 )
-                Switch(
-                    checked = isNotificationEnabled,
-                    onCheckedChange = { isNotificationEnabled = it }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = selectedTime?.format(DateTimeFormatter.ofPattern("HH:mm"))
+                        ?: "Pilih Jam Deadline"
                 )
             }
 
-            // Notification Time (only show if enabled)
-            if (isNotificationEnabled) {
-                OutlinedButton(
-                    onClick = { /* TODO: Show time picker */ },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = if (selectedNotificationTime != null) {
-                            "Waktu: $selectedNotificationTime"
-                        } else {
-                            "Pilih Waktu Notifikasi"
-                        }
+            // Reminder Section
+            Text(
+                text = "Pengingat Sebelumnya",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            // Reminder Options
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    null to "Tidak",
+                    15 to "15 menit",
+                    30 to "30 menit",
+                    60 to "1 jam"
+                ).forEach { (minutes, label) ->
+                    FilterChip(
+                        selected = selectedReminderMinutes == minutes,
+                        onClick = { selectedReminderMinutes = minutes },
+                        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                        modifier = Modifier.weight(1f)
                     )
                 }
-
-                // Minutes Before Reminder
-                Text(
-                    text = "Pengingat Sebelumnya (Menit)",
-                    style = MaterialTheme.typography.labelSmall
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    repeat(3) { index ->
-                        val minutes = listOf(15, 30, 45)[index]
-                        FilterChipItem(
-                            label = "$minutes min",
-                            isSelected = notificationMinutesBefore == minutes,
-                            onClick = { notificationMinutesBefore = minutes }
-                        )
-                    }
-                }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Action Buttons
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedButton(
@@ -244,11 +178,9 @@ fun AddItemBottomSheet(
                         if (itemName.isNotBlank()) {
                             onAddItem(
                                 itemName,
-                                selectedDeadline,
-                                selectedNotificationTime,
-                                isNotificationEnabled,
-                                notificationMinutesBefore,
-                                selectedCategoryId
+                                selectedDate,
+                                selectedTime,
+                                selectedReminderMinutes
                             )
                             onDismiss()
                         }
@@ -256,14 +188,69 @@ fun AddItemBottomSheet(
                     modifier = Modifier
                         .weight(1f)
                         .height(48.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = buttonColor)
+                    colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
+                    enabled = itemName.isNotBlank()
                 ) {
-                    Text("Tambah Item", color = Color.White)
+                    Text("Tambah", color = Color.White)
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+
+    // Date Picker Dialog
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            selectedDate = java.time.Instant.ofEpochMilli(millis)
+                                .atZone(java.time.ZoneId.systemDefault())
+                                .toLocalDate()
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Batal")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // Time Picker Dialog
+    if (showTimePicker) {
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text("Pilih Jam") },
+            text = {
+                TimePicker(state = timePickerState)
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        selectedTime = LocalTime.of(timePickerState.hour, timePickerState.minute)
+                        showTimePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 }
 

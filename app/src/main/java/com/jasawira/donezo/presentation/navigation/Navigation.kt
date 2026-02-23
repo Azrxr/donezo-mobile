@@ -39,7 +39,8 @@ object NavigationRoutes {
  */
 @Composable
 fun ChecklistAppNavGraph(
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    onThemeChange: (String) -> Unit = {}
 ) {
     NavHost(
         navController = navController,
@@ -85,7 +86,8 @@ fun ChecklistAppNavGraph(
             SettingsScreen(
                 onBackClick = {
                     navController.popBackStack()
-                }
+                },
+                onThemeChange = onThemeChange
             )
         }
     }

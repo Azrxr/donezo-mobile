@@ -1,35 +1,34 @@
 package com.jasawira.donezo.presentation.screen
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.jasawira.donezo.presentation.theme.ColorPresets
 import com.jasawira.donezo.presentation.theme.Spacing
-import com.jasawira.donezo.presentation.viewmodel.HomeViewModel
+import com.jasawira.donezo.presentation.utils.UserPreferencesManager
 
 /**
  * SettingsScreen
- * Halaman settings untuk mengatur theme dan color preset
+ * Halaman settings untuk mengatur theme
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
-    viewModel: HomeViewModel = hiltViewModel(),
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onThemeChange: (String) -> Unit = {}
 ) {
-    var selectedTheme by remember { mutableStateOf("system") }
-    var selectedColorPreset by remember { mutableStateOf(6) }
+    val context = LocalContext.current
+    val userPreferences = remember { UserPreferencesManager(context) }
+
+    var selectedTheme by remember { mutableStateOf(userPreferences.getThemeMode()) }
 
     Scaffold(
         topBar = {
@@ -60,18 +59,8 @@ fun SettingsScreen(
                     selectedTheme = selectedTheme,
                     onThemeChange = { theme ->
                         selectedTheme = theme
-                        // TODO: Implement theme change
-                    }
-                )
-            }
-
-            // Color Preset Section
-            item {
-                SettingsSectionColorPreset(
-                    selectedColorPreset = selectedColorPreset,
-                    onColorPresetChange = { colorId ->
-                        selectedColorPreset = colorId
-                        viewModel.setColorPreset(colorId)
+                        userPreferences.setThemeMode(theme)
+                        onThemeChange(theme)
                     }
                 )
             }
@@ -173,126 +162,6 @@ fun ThemeOption(
     }
 }
 
-/**
- * Settings Section: Color Preset
- */
-@Composable
-fun SettingsSectionColorPreset(
-    modifier: Modifier = Modifier,
-    selectedColorPreset: Int = 6,
-    onColorPresetChange: (Int) -> Unit = {}
-) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(Spacing.md)
-    ) {
-        // Header
-        Text(
-            text = "Warna Tema",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-
-        // Color Grid (2 columns)
-        Column(
-            verticalArrangement = Arrangement.spacedBy(Spacing.md)
-        ) {
-            ColorPresets.allPresets.chunked(2).forEach { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.md)
-                ) {
-                    row.forEach { preset ->
-                        ColorPresetCard(
-                            preset = preset,
-                            isSelected = selectedColorPreset == preset.id,
-                            onClick = { onColorPresetChange(preset.id) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    // Placeholder untuk keep symmetry jika ada item ganjil
-                    if (row.size < 2) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Color Preset Card
- */
-@Composable
-fun ColorPresetCard(
-    modifier: Modifier = Modifier,
-    preset: com.jasawira.donezo.presentation.theme.ColorPreset,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = modifier
-            .height(100.dp),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = preset.backgroundColor
-        ),
-        onClick = onClick,
-        border = if (isSelected) {
-            BorderStroke(
-                3.dp,
-                preset.primaryColor
-            )
-        } else {
-            null
-        }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(Spacing.md),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Color name
-            Text(
-                text = preset.name,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold,
-                color = preset.textColor
-            )
-
-            // Color dots
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
-            ) {
-                // Primary color dot
-                Surface(
-                    modifier = Modifier.size(12.dp),
-                    shape = CircleShape,
-                    color = preset.primaryColor
-                ) {}
-
-                // Secondary/Accent dot
-                Surface(
-                    modifier = Modifier.size(12.dp),
-                    shape = CircleShape,
-                    color = preset.accentColor
-                ) {}
-            }
-
-            // Selected indicator
-            if (isSelected) {
-                Text(
-                    text = "✓ Dipilih",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = preset.primaryColor,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
 
 /**
  * Settings Section: About

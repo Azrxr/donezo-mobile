@@ -72,4 +72,8 @@ class ChecklistRepositoryImpl(
         val entities = checklistItemDao.getNotificationItemsByCard(cardId)
         return ChecklistItemMapper.toDomainList(entities)
     }
+
+    override fun observeAllItemsCount(): Flow<Int> {
+        return checklistItemDao.observeAllItemsCount()
+    }
 }

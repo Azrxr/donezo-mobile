@@ -73,6 +73,8 @@ class HomeViewModel @Inject constructor(
     // ALL DATA
     private val _allCards = cardRepository.getAllCards()
     private val _allCategories = categoryRepository.getAllCategories()
+    // Observe item changes globally (trigger refresh saat items berubah di detail)
+    private val _allItemsCount = checklistRepository.observeAllItemsCount()
 
     init {
         loadUserNameFromPreferences()
@@ -81,26 +83,46 @@ class HomeViewModel @Inject constructor(
 
     /**
      * Load initial data untuk home screen
+     * Reactive: auto-refresh saat cards, categories, filter, ATAU items berubah
      */
     private fun loadHomeData() {
         viewModelScope.launch {
             try {
-                // Combine all cards dan categories
+                // Combine cards, categories, filters, DAN item count (untuk detect item changes)
                 combine(
                     _allCards,
                     _allCategories,
                     _searchQuery,
-                    _filterOptions
-                ) { cards, categories, query, filters ->
+                    _filterOptions,
+                    _allItemsCount
+                ) { cards, categories, query, filters, _ ->
+                    // _ = itemsCount, hanya sebagai trigger refresh
                     applyFiltersAndSearch(cards, categories, query, filters)
                 }.collect { (filteredCards, categories) ->
+                    // Preserve edit mode state saat refresh
+                    val currentState = _uiState.value
+                    val isEditMode = (currentState as? HomeUiState.Success)?.isEditMode ?: false
+                    val selectedCardIds = (currentState as? HomeUiState.Success)?.selectedCardIds ?: emptySet()
+
+                    // Load preview items untuk setiap card (max 3)
+                    val cardPreviews = filteredCards.map { card ->
+                        val items = checklistRepository.getItemsByCard(card.id).first()
+                        CardPreview(
+                            card = card,
+                            previewItems = items.take(3)
+                        )
+                    }
+
                     _uiState.value = HomeUiState.Success(
                         cards = filteredCards,
+                        cardPreviews = cardPreviews,
                         categories = categories,
                         filteredCards = filteredCards,
                         filterOptions = _filterOptions.value,
                         searchQuery = _searchQuery.value,
-                        isDarkMode = false // TODO: Get from settings
+                        isDarkMode = false,
+                        isEditMode = isEditMode,
+                        selectedCardIds = selectedCardIds
                     )
                 }
             } catch (e: Exception) {
@@ -151,6 +173,13 @@ class HomeViewModel @Inject constructor(
             is HomeUiEvent.UpdateCardPosition -> updateCardPositions(event.fromPosition, event.toPosition)
             is HomeUiEvent.ClearFilter -> clearFilter()
             is HomeUiEvent.RefreshCards -> loadHomeData()
+            // Edit Mode Events
+            is HomeUiEvent.EnterEditMode -> enterEditMode()
+            is HomeUiEvent.ExitEditMode -> exitEditMode()
+            is HomeUiEvent.ToggleCardSelection -> toggleCardSelection(event.cardId)
+            is HomeUiEvent.DeleteSelectedCards -> deleteSelectedCards()
+            is HomeUiEvent.SelectAllCards -> selectAllCards()
+            is HomeUiEvent.DeselectAllCards -> deselectAllCards()
         }
     }
 
@@ -255,6 +284,105 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
+     * Enter edit mode - cards bisa di-reorder dan delete
+     */
+    private fun enterEditMode() {
+        val currentState = _uiState.value
+        if (currentState is HomeUiState.Success) {
+            _uiState.value = currentState.copy(
+                isEditMode = true,
+                selectedCardIds = emptySet()
+            )
+        }
+    }
+
+    /**
+     * Exit edit mode
+     */
+    private fun exitEditMode() {
+        val currentState = _uiState.value
+        if (currentState is HomeUiState.Success) {
+            _uiState.value = currentState.copy(
+                isEditMode = false,
+                selectedCardIds = emptySet()
+            )
+        }
+    }
+
+    /**
+     * Toggle card selection for multi-select delete
+     */
+    private fun toggleCardSelection(cardId: String) {
+        val currentState = _uiState.value
+        if (currentState is HomeUiState.Success) {
+            val newSelection = if (currentState.selectedCardIds.contains(cardId)) {
+                currentState.selectedCardIds - cardId
+            } else {
+                currentState.selectedCardIds + cardId
+            }
+            _uiState.value = currentState.copy(selectedCardIds = newSelection)
+        }
+    }
+
+    /**
+     * Delete all selected cards
+     */
+    private fun deleteSelectedCards() {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            if (currentState is HomeUiState.Success) {
+                val selectedIds = currentState.selectedCardIds.toList()
+                var successCount = 0
+                var failCount = 0
+
+                selectedIds.forEach { cardId ->
+                    try {
+                        val result = cardRepository.deleteCard(cardId)
+                        if (result) successCount++ else failCount++
+                    } catch (e: Exception) {
+                        failCount++
+                    }
+                }
+
+                // Exit edit mode setelah delete
+                exitEditMode()
+
+                if (successCount > 0) {
+                    _snackbarEvent.emit(
+                        SnackbarEvent.Success("$successCount card berhasil dihapus")
+                    )
+                }
+                if (failCount > 0) {
+                    _snackbarEvent.emit(
+                        SnackbarEvent.Error("$failCount card gagal dihapus")
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Select all cards
+     */
+    private fun selectAllCards() {
+        val currentState = _uiState.value
+        if (currentState is HomeUiState.Success) {
+            val allCardIds = currentState.filteredCards.map { it.id }.toSet()
+            _uiState.value = currentState.copy(selectedCardIds = allCardIds)
+        }
+    }
+
+    /**
+     * Deselect all cards
+     */
+    private fun deselectAllCards() {
+        val currentState = _uiState.value
+        if (currentState is HomeUiState.Success) {
+            _uiState.value = currentState.copy(selectedCardIds = emptySet())
+        }
+    }
+
+    /**
      * Add new card dengan random color preset
      */
     fun addCard(
@@ -294,6 +422,28 @@ class HomeViewModel @Inject constructor(
                 _snackbarEvent.emit(SnackbarEvent.Error("Gagal membuat card: ${e.message}"))
             }
         }
+    }
+
+    /**
+     * Add new category
+     */
+    fun addCategory(name: String): String {
+        val categoryId = java.util.UUID.randomUUID().toString()
+        viewModelScope.launch {
+            try {
+                val category = Category(
+                    id = categoryId,
+                    name = name,
+                    createdAt = java.time.LocalDateTime.now(),
+                )
+                categoryRepository.addCategory(category)
+                _snackbarEvent.emit(SnackbarEvent.Success("Kategori '$name' berhasil ditambahkan"))
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _snackbarEvent.emit(SnackbarEvent.Error("Gagal menambah kategori: ${e.message}"))
+            }
+        }
+        return categoryId
     }
 
     /**

@@ -28,7 +28,10 @@ sealed class HomeUiState {
         val filteredCards: List<Card> = emptyList(),
         val filterOptions: FilterOptions = FilterOptions(),
         val searchQuery: String = "",
-        val isDarkMode: Boolean = false
+        val isDarkMode: Boolean = false,
+        // Edit Mode State
+        val isEditMode: Boolean = false,
+        val selectedCardIds: Set<String> = emptySet()
     ) : HomeUiState()
     data class Error(val message: String) : HomeUiState()
 }
@@ -46,6 +49,13 @@ sealed class HomeUiEvent {
     data class UpdateCardPosition(val fromPosition: Int, val toPosition: Int) : HomeUiEvent()
     object ClearFilter : HomeUiEvent()
     object RefreshCards : HomeUiEvent()
+    // Edit Mode Events
+    object EnterEditMode : HomeUiEvent()
+    object ExitEditMode : HomeUiEvent()
+    data class ToggleCardSelection(val cardId: String) : HomeUiEvent()
+    object DeleteSelectedCards : HomeUiEvent()
+    object SelectAllCards : HomeUiEvent()
+    object DeselectAllCards : HomeUiEvent()
 }
 
 /**

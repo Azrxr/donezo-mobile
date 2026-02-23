@@ -11,11 +11,13 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
 import com.jasawira.donezo.presentation.navigation.ChecklistAppNavGraph
 import com.jasawira.donezo.presentation.theme.DonezoTheme
+import com.jasawira.donezo.presentation.utils.UserPreferencesManager
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -50,14 +52,29 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val navController = rememberNavController()
-            val isDarkTheme = isSystemInDarkTheme()
+            val userPreferences = remember { UserPreferencesManager(this) }
+
+            // Theme state - read from preferences
+            var themeMode by remember { mutableStateOf(userPreferences.getThemeMode()) }
+
+            // Determine if dark theme based on themeMode
+            val isDarkTheme = when (themeMode) {
+                "dark" -> true
+                "light" -> false
+                else -> isSystemInDarkTheme() // "system" - follow system
+            }
 
             DonezoTheme(darkTheme = isDarkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ChecklistAppNavGraph(navController = navController)
+                    ChecklistAppNavGraph(
+                        navController = navController,
+                        onThemeChange = { newTheme ->
+                            themeMode = newTheme
+                        }
+                    )
                 }
             }
         }

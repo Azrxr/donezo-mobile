@@ -61,4 +61,9 @@ interface ChecklistRepository {
      * Mendapatkan items dengan notifikasi untuk card tertentu
      */
     suspend fun getNotificationItemsByCard(cardId: String): List<ChecklistItem>
+
+    /**
+     * Observe total item count (trigger refresh saat items berubah)
+     */
+    fun observeAllItemsCount(): Flow<Int>
 }

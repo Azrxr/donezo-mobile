@@ -7,14 +7,18 @@ import com.jasawira.donezo.data.mapper.CardWithItemsMapper
 import com.jasawira.donezo.domain.model.Card
 import com.jasawira.donezo.domain.model.CardWithChecklistItems
 import com.jasawira.donezo.domain.repository.CardRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import java.time.LocalDateTime
 
 /**
  * IMPLEMENTATION: CardRepository
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class CardRepositoryImpl(
     private val cardDao: CardDao,
     private val checklistItemDao: ChecklistItemDao
@@ -22,13 +26,22 @@ class CardRepositoryImpl(
 
     override fun getAllCards(): Flow<List<Card>> {
         return cardDao.getAllCards()
-            .combine(
-                // Combine dengan item counts
-                kotlinx.coroutines.flow.flowOf(Unit)
-            ) { cards, _ ->
-                // Fetch counts untuk setiap card
-                cards.map { card ->
-                    CardMapper.toDomain(card)
+            .flatMapLatest { cards ->
+                if (cards.isEmpty()) {
+                    flowOf(emptyList())
+                } else {
+                    // Combine all count flows reactively so changes propagate
+                    val countFlows = cards.map { card ->
+                        combine(
+                            checklistItemDao.getTotalItemCount(card.id),
+                            checklistItemDao.getCheckedItemCount(card.id)
+                        ) { total, checked -> Triple(card, total, checked) }
+                    }
+                    combine(countFlows) { results ->
+                        results.map { (card, totalCount, checkedCount) ->
+                            CardMapper.toDomain(card, totalCount, checkedCount)
+                        }
+                    }
                 }
             }
     }

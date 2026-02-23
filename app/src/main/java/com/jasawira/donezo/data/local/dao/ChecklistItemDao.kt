@@ -22,6 +22,10 @@ interface ChecklistItemDao {
     @Query("SELECT * FROM checklist_items WHERE cardId = :cardId ORDER BY position ASC")
     fun getItemsByCard(cardId: String): Flow<List<ChecklistItemEntity>>
 
+    // Observe all items count (untuk trigger refresh di Home saat items berubah)
+    @Query("SELECT COUNT(*) FROM checklist_items")
+    fun observeAllItemsCount(): Flow<Int>
+
     @Query("SELECT * FROM checklist_items WHERE id = :id")
     suspend fun getItemById(id: String): ChecklistItemEntity?
 
@@ -102,4 +106,11 @@ interface ChecklistItemDao {
     // Count total items per card
     @Query("SELECT COUNT(*) FROM checklist_items WHERE cardId = :cardId")
     fun getTotalItemCount(cardId: String): Flow<Int>
+
+    // Sync versions for repository mapping
+    @Query("SELECT COUNT(*) FROM checklist_items WHERE cardId = :cardId AND isChecked = 1")
+    suspend fun getCheckedItemCountSync(cardId: String): Int
+
+    @Query("SELECT COUNT(*) FROM checklist_items WHERE cardId = :cardId")
+    suspend fun getTotalItemCountSync(cardId: String): Int
 }

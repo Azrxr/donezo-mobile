@@ -1,17 +1,41 @@
 package com.jasawira.donezo.presentation.screen
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.jasawira.donezo.presentation.components.*
+import com.jasawira.donezo.presentation.components.ChecklistItemPreview
 import com.jasawira.donezo.presentation.uistate.HomeUiEvent
 import com.jasawira.donezo.presentation.uistate.HomeUiState
 import com.jasawira.donezo.presentation.uistate.CardPreview
@@ -22,6 +46,11 @@ import kotlinx.coroutines.launch
 /**
  * HomeScreen - Redesigned
  * Main screen dengan design baru sesuai gambar
+ * Features:
+ * - Long press untuk masuk edit mode
+ * - Multi-select cards
+ * - Drag-drop reorder
+ * - Delete dengan konfirmasi dialog
  */
 @Composable
 fun HomeScreenRedesign(
@@ -37,6 +66,16 @@ fun HomeScreenRedesign(
     val scope = rememberCoroutineScope()
     var showAddCardSheet by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    // Edit mode state dari UI
+    val isEditMode = (uiState as? HomeUiState.Success)?.isEditMode ?: false
+    val selectedCardIds = (uiState as? HomeUiState.Success)?.selectedCardIds ?: emptySet()
+
+    // BackHandler untuk keluar edit mode dengan gesture back
+    BackHandler(enabled = isEditMode) {
+        viewModel.onEvent(HomeUiEvent.ExitEditMode)
+    }
 
     // Listen to snackbar events
     LaunchedEffect(Unit) {
@@ -54,22 +93,53 @@ fun HomeScreenRedesign(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            // Edit Mode Top Bar
+            if (isEditMode) {
+                EditModeTopBar(
+                    selectedCount = selectedCardIds.size,
+                    onSelectAll = { viewModel.onEvent(HomeUiEvent.SelectAllCards) },
+                    onDeselectAll = { viewModel.onEvent(HomeUiEvent.DeselectAllCards) },
+                    onDelete = { showDeleteConfirmDialog = true },
+                    onClose = { viewModel.onEvent(HomeUiEvent.ExitEditMode) }
+                )
+            }
+        },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddCardSheet = true },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Card")
+            // Hide FAB when in edit mode
+            if (!isEditMode) {
+                FloatingActionButton(
+                    onClick = { showAddCardSheet = true },
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Card")
+                }
             }
         },
         modifier = modifier
     ) { paddingValues ->
-        LazyColumn(
+        // Box untuk detect tap di area kosong
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+                .padding(paddingValues)
+                .then(
+                    if (isEditMode) {
+                        Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            viewModel.onEvent(HomeUiEvent.ExitEditMode)
+                        }
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
             // Top App Bar dengan logo, search, dan settings
             item {
                 TopAppBarDonezo(
@@ -130,6 +200,7 @@ fun HomeScreenRedesign(
 
                 is HomeUiState.Success -> {
                     val cards = state.filteredCards
+                    val cardPreviews = state.cardPreviews
 
                     if (cards.isEmpty()) {
                         // Show create card placeholder when empty
@@ -140,28 +211,55 @@ fun HomeScreenRedesign(
                             )
                         }
                     } else {
-                        // Show cards
-                        items(
+                        // Show cards with Edit Mode support
+                        itemsIndexed(
                             items = cards,
-                            key = { it.id }
-                        ) { card ->
-                            ReorderableCardWrapper(
+                            key = { _, card -> card.id }
+                        ) { index, card ->
+                            val isSelected = selectedCardIds.contains(card.id)
+                            // Find preview items for this card
+                            val cardPreview = cardPreviews.find { it.card.id == card.id }
+                            val previewItems = cardPreview?.previewItems?.map { item ->
+                                ChecklistItemPreview(
+                                    id = item.id,
+                                    name = item.itemName,
+                                    isChecked = item.isChecked
+                                )
+                            } ?: emptyList()
+
+                            EditableCardWrapper(
+                                isEditMode = isEditMode,
+                                isSelected = isSelected,
                                 onLongPress = {
-                                    // Show toast atau visual feedback bahwa card bisa di-reorder
-                                    // TODO: Implement haptic feedback
+                                    // Enter edit mode on long press
+                                    if (!isEditMode) {
+                                        viewModel.onEvent(HomeUiEvent.EnterEditMode)
+                                    }
+                                    // Auto select the long-pressed card
+                                    viewModel.onEvent(HomeUiEvent.ToggleCardSelection(card.id))
                                 },
                                 onTap = {
-                                    onCardClick(card.id)
+                                    if (isEditMode) {
+                                        // Toggle selection in edit mode
+                                        viewModel.onEvent(HomeUiEvent.ToggleCardSelection(card.id))
+                                    } else {
+                                        // Navigate to detail
+                                        onCardClick(card.id)
+                                    }
                                 }
-                            ) { isLongPressed ->
+                            ) {
                                 CompactCardComponent(
                                     cardName = card.name,
                                     colorPresetId = card.colorPresetId,
                                     completedCount = card.completedItemCount,
                                     totalCount = card.itemCount,
-                                    items = emptyList(), // TODO: Fetch actual items
+                                    items = previewItems,
                                     onCardClick = {
-                                        onCardClick(card.id)
+                                        if (isEditMode) {
+                                            viewModel.onEvent(HomeUiEvent.ToggleCardSelection(card.id))
+                                        } else {
+                                            onCardClick(card.id)
+                                        }
                                     },
                                     onItemCheckChange = { itemId, isChecked ->
                                         // TODO: Handle check change
@@ -170,12 +268,14 @@ fun HomeScreenRedesign(
                             }
                         }
 
-                        // Add placeholder at bottom
-                        item {
-                            CreateCardPlaceholder(
-                                onClick = { showAddCardSheet = true }
-                            )
-                            Spacer(modifier = Modifier.height(80.dp))
+                        // Add placeholder at bottom (hide when in edit mode)
+                        if (!isEditMode) {
+                            item {
+                                CreateCardPlaceholder(
+                                    onClick = { showAddCardSheet = true }
+                                )
+                                Spacer(modifier = Modifier.height(80.dp))
+                            }
                         }
                     }
                 }
@@ -202,6 +302,34 @@ fun HomeScreenRedesign(
                 }
             }
         }
+        } // Close Box wrapper
+    }
+
+    // Delete Confirmation Dialog
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Hapus Card") },
+            text = {
+                Text("Apakah Anda yakin ingin menghapus ${selectedCardIds.size} card yang dipilih?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.onEvent(HomeUiEvent.DeleteSelectedCards)
+                        showDeleteConfirmDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("Hapus", color = Color.White)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 
     // Add Card Dialog
@@ -209,11 +337,172 @@ fun HomeScreenRedesign(
         AddCardDialogRedesigned(
             categories = (uiState as? HomeUiState.Success)?.categories ?: emptyList(),
             onDismiss = { showAddCardSheet = false },
-            onAddCard = { name, categoryId ->
-                viewModel.addCard(name, categoryId) // Color auto-random
+            onAddCard = { name, categoryId, colorPresetId ->
+                viewModel.addCard(name, categoryId, colorPresetId)
                 showAddCardSheet = false
+            },
+            onAddCategory = { categoryName ->
+                viewModel.addCategory(categoryName)
             }
         )
+    }
+}
+
+/**
+ * EditModeTopBar
+ * Top bar saat dalam edit mode dengan opsi select all, delete, close
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditModeTopBar(
+    selectedCount: Int,
+    onSelectAll: () -> Unit,
+    onDeselectAll: () -> Unit,
+    onDelete: () -> Unit,
+    onClose: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Text(
+                text = if (selectedCount > 0) "$selectedCount dipilih" else "Mode Edit",
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onClose) {
+                Icon(Icons.Default.Close, contentDescription = "Tutup")
+            }
+        },
+        actions = {
+            // Select/Deselect All
+            TextButton(onClick = {
+                if (selectedCount > 0) onDeselectAll() else onSelectAll()
+            }) {
+                Text(if (selectedCount > 0) "Batal Pilih" else "Pilih Semua")
+            }
+
+            // Delete Button (only show when items selected)
+            if (selectedCount > 0) {
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Hapus",
+                        tint = Color.Red
+                    )
+                }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    )
+}
+
+/**
+ * EditableCardWrapper
+ * Wrapper untuk card dengan edit mode support:
+ * - Rotation shake animation seperti iOS (natural)
+ * - Visual feedback saat ditekan (elevation + scale)
+ * - Selection indicator dengan border
+ * - Long press untuk masuk edit mode
+ */
+@Composable
+fun EditableCardWrapper(
+    modifier: Modifier = Modifier,
+    isEditMode: Boolean,
+    isSelected: Boolean,
+    onLongPress: () -> Unit,
+    onTap: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    // Rotation animation for edit mode (like iOS)
+    val rotationAngle = remember { Animatable(0f) }
+
+    // Random initial offset agar setiap card goyang beda fase
+    val randomDelay = remember { (0..150).random() }
+    // Random amplitude agar setiap card sedikit beda intensitas
+    val amplitude = remember { 1.5f + (0..10).random() / 10f }
+
+    LaunchedEffect(isEditMode) {
+        if (isEditMode) {
+            kotlinx.coroutines.delay(randomDelay.toLong())
+            rotationAngle.animateTo(
+                targetValue = amplitude,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(
+                        durationMillis = 120 + (0..60).random(),
+                        easing = androidx.compose.animation.core.FastOutSlowInEasing
+                    ),
+                    repeatMode = RepeatMode.Reverse
+                )
+            )
+        } else {
+            rotationAngle.snapTo(0f)
+        }
+    }
+
+    var isPressed by remember { mutableStateOf(false) }
+
+    // Reset state saat edit mode berubah
+    LaunchedEffect(isEditMode) {
+        if (!isEditMode) {
+            isPressed = false
+        }
+    }
+
+    // Animated values
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) Color(0xFF26D3C8) else Color.Transparent,
+        label = "border"
+    )
+
+    val cardScale by animateFloatAsState(
+        targetValue = if (isPressed) 1.02f else 1f,
+        animationSpec = tween(durationMillis = 200),
+        label = "scale"
+    )
+
+    val cardElevation by animateFloatAsState(
+        targetValue = if (isPressed) 4f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "elevation"
+    )
+
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                rotationZ = if (isEditMode) rotationAngle.value else 0f
+                scaleX = cardScale
+                scaleY = cardScale
+                shadowElevation = cardElevation
+            }
+            .pointerInput(isEditMode) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    },
+                    onTap = { onTap() },
+                    onLongPress = { onLongPress() }
+                )
+            }
+    ) {
+        // Main content with selection border only
+        Box(
+            modifier = Modifier
+                .then(
+                    if (isSelected) {
+                        Modifier
+                            .padding(4.dp)
+                            .border(3.dp, borderColor, RoundedCornerShape(20.dp))
+                    } else {
+                        Modifier
+                    }
+                )
+        ) {
+            content()
+        }
     }
 }
 

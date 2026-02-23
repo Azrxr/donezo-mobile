@@ -433,6 +433,28 @@ class CardDetailViewModel @Inject constructor(
     }
 
     /**
+     * Mark selected items as completed
+     */
+    fun markSelectedItemsAsCompleted() {
+        viewModelScope.launch {
+            try {
+                _selectedItems.value.forEach { itemId ->
+                    checklistRepository.updateItemCheckedStatus(itemId, true)
+                }
+
+                _snackbarEvent.emit(
+                    SnackbarEvent.Success("${_selectedItems.value.size} item ditandai selesai")
+                )
+
+                clearSelection()
+                _currentCardId.value?.let { loadCardDetail(it) }
+            } catch (e: Exception) {
+                _snackbarEvent.emit(SnackbarEvent.Error("Gagal menandai item selesai"))
+            }
+        }
+    }
+
+    /**
      * Update new item name input
      */
     fun updateNewItemName(name: String) {
@@ -528,6 +550,46 @@ class CardDetailViewModel @Inject constructor(
                 deadline = deadline,
                 notificationTime = notificationTime,
                 notificationMinutesBefore = notificationMinutesBefore,
+                isNotificationEnabled = isNotificationEnabled,
+                position = 0,
+                createdAt = LocalDateTime.now()
+            )
+
+            onEvent(CardDetailUiEvent.AddItem(newItem))
+        }
+    }
+
+    /**
+     * Add new item dengan interface yang disederhanakan
+     * - itemName: nama task
+     * - deadlineDate: tanggal deadline (opsional)
+     * - deadlineTime: jam deadline (opsional)
+     * - reminderMinutesBefore: berapa menit sebelum deadline reminder (null = tidak ada reminder)
+     */
+    fun addNewItemSimple(
+        itemName: String,
+        deadlineDate: java.time.LocalDate?,
+        deadlineTime: java.time.LocalTime?,
+        reminderMinutesBefore: Int?
+    ) {
+        if (itemName.isBlank()) {
+            viewModelScope.launch {
+                _snackbarEvent.emit(SnackbarEvent.Error("Nama item tidak boleh kosong"))
+            }
+            return
+        }
+
+        _currentCardId.value?.let { cardId ->
+            val isNotificationEnabled = reminderMinutesBefore != null && deadlineDate != null
+
+            val newItem = ChecklistItem(
+                id = UUID.randomUUID().toString(),
+                cardId = cardId,
+                itemName = itemName,
+                isChecked = false,
+                deadline = deadlineDate,
+                notificationTime = deadlineTime,
+                notificationMinutesBefore = reminderMinutesBefore ?: 30,
                 isNotificationEnabled = isNotificationEnabled,
                 position = 0,
                 createdAt = LocalDateTime.now()
