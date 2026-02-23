@@ -364,6 +364,7 @@ Key dependencies:
 
 ## 📄 License
 
+Project ini sudah tayang di Play Store. dilarang diperjual belikan.
 Project ini adalah demo untuk pembelajaran. Bebas digunakan & dimodifikasi.
 
 ---
