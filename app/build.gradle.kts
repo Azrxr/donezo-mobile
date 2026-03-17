@@ -37,7 +37,6 @@ android {
         }
         debug {
             isMinifyEnabled = false
-            debuggable = true
             ndk {
                 debugSymbolLevel = "FULL"
             }

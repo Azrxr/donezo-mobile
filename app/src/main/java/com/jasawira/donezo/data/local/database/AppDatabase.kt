@@ -35,7 +35,7 @@ import java.util.UUID
         CardEntity::class,
         ChecklistItemEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(DateTimeConverters::class)
@@ -68,31 +68,24 @@ abstract class AppDatabase : RoomDatabase() {
                 DATABASE_NAME
             )
                 .addCallback(object : Callback() {
-                    override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                        super.onOpen(db)
-                        // Cek apakah table sudah memiliki data
-                        val cursor = db.query("SELECT COUNT(*) FROM categories")
-                        cursor.moveToFirst()
-                        val count = cursor.getInt(0)
-                        cursor.close()
+                    override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                        super.onCreate(db)
+                        
+                        val now = LocalDateTime.now().toString()
+                        val defaultCategories = arrayOf(
+                            arrayOf("uncategorized_default", "Uncategorized", now),
+                            arrayOf(UUID.randomUUID().toString(), "Work", now),
+                            arrayOf(UUID.randomUUID().toString(), "Personal", now),
+                            arrayOf(UUID.randomUUID().toString(), "Shopping", now),
+                            arrayOf(UUID.randomUUID().toString(), "Health", now),
+                            arrayOf(UUID.randomUUID().toString(), "Learning", now)
+                        )
 
-                        // Jika kosong, insert default categories
-                        if (count == 0) {
-                            val defaultCategories = arrayOf(
-                                arrayOf("uncategorized_default","Uncategorized", LocalDateTime.now().toString()),
-                                arrayOf("Work", LocalDateTime.now().toString()),
-                                arrayOf("Personal", LocalDateTime.now().toString()),
-                                arrayOf("Shopping", LocalDateTime.now().toString()),
-                                arrayOf("Health", LocalDateTime.now().toString()),
-                                arrayOf("Learning", LocalDateTime.now().toString())
+                        defaultCategories.forEach { category ->
+                            db.execSQL(
+                                "INSERT INTO categories (id, name, createdAt) VALUES (?, ?, ?)",
+                                category
                             )
-
-                            defaultCategories.forEach { category ->
-                                db.execSQL(
-                                    "INSERT INTO categories (id, name, createdAt) VALUES (?, ?, ?)",
-                                    arrayOf(UUID.randomUUID().toString(), category[0], category[1])
-                                )
-                            }
                         }
                     }
                 })
