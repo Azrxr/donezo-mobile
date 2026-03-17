@@ -53,7 +53,7 @@ fun CreateCardPlaceholder(
 
             // Text "Target Baru"
             Text(
-                text = "Target Baru",
+                text = "Tugas Baru",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )

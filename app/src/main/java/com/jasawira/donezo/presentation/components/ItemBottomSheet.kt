@@ -91,7 +91,7 @@ fun ItemBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (isEditMode) "Edit Task" else "Tambah Task Baru",
+                    text = if (isEditMode) "Edit Tugas" else "Tambah Tugas Baru",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -223,7 +223,7 @@ fun ItemBottomSheet(
                 enabled = itemName.isNotBlank()
             ) {
                 Text(
-                    text = if (isEditMode) "Simpan Perubahan" else "Tambah Task",
+                    text = if (isEditMode) "Simpan Perubahan" else "Tambah Tugas",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium

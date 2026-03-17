@@ -21,7 +21,7 @@ fun SearchBarComponent(
     modifier: Modifier = Modifier,
     searchQuery: String = "",
     onSearchChange: (String) -> Unit = {},
-    placeholder: String = "Cari tugas atau langkah..."
+    placeholder: String = "Cari tugas..."
 ) {
     OutlinedTextField(
         value = searchQuery,

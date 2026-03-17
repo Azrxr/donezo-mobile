@@ -154,7 +154,7 @@ fun CardDetailScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Hapus Card") },
+                            text = { Text("Hapus Tugas") },
                             onClick = {
                                 showMenu = false
                                 viewModel.onEvent(CardDetailUiEvent.DeleteCard)
@@ -313,7 +313,7 @@ fun CardDetailScreen(
                                         modifier = Modifier.size(24.dp)
                                     )
                                     Text(
-                                        text = "Tambah item baru...",
+                                        text = "Tambah langkah baru...",
                                         color = currentPreset.textColor.copy(alpha = 0.5f),
                                         style = MaterialTheme.typography.bodyMedium
                                     )

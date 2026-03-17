@@ -81,7 +81,7 @@ fun CardDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (isEditMode) "Edit Card Tugas" else "Buat Card Tugas",
+                    text = if (isEditMode) "Edit Tugas" else "Buat Tugas",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -101,7 +101,7 @@ fun CardDialog(
             OutlinedTextField(
                 value = cardName,
                 onValueChange = { cardName = it },
-                placeholder = { Text("Nama card tugas...", color = Color.Gray) },
+                placeholder = { Text("Nama tugas baru...", color = Color.Gray) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -240,7 +240,7 @@ fun CardDialog(
                 enabled = isFormValid
             ) {
                 Text(
-                    text = if (isEditMode) "Simpan Perubahan" else "Buat Card",
+                    text = if (isEditMode) "Simpan Perubahan" else "Buat Tugas",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium

@@ -281,8 +281,8 @@ fun HomeScreen(
     if (showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
-            title = { Text("Hapus Card") },
-            text = { Text("Apakah Anda yakin ingin menghapus ${selectedCardIds.size} card yang dipilih?") },
+            title = { Text("Hapus Tugas") },
+            text = { Text("Apakah Anda yakin ingin menghapus ${selectedCardIds.size} tugas yang dipilih?") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -332,7 +332,7 @@ fun EditModeTopBar(
     TopAppBar(
         title = {
             Text(
-                text = if (selectedCount > 0) "$selectedCount dipilih" else "Pilih Card",
+                text = if (selectedCount > 0) "$selectedCount dipilih" else "Pilih Tugas",
                 style = MaterialTheme.typography.titleMedium
             )
         },

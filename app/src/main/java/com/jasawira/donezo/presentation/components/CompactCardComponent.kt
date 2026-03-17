@@ -24,7 +24,7 @@ import com.jasawira.donezo.presentation.theme.ColorPresets
 @Composable
 fun CompactCardComponent(
     modifier: Modifier = Modifier,
-    cardName: String = "Card Name",
+    cardName: String = "Nama Tugas",
     categoryName: String = "Harian",
     colorPresetId: Int = 0,
     completedCount: Int = 0,
