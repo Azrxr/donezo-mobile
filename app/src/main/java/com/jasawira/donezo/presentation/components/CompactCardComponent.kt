@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
+import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +27,7 @@ import com.jasawira.donezo.presentation.theme.ColorPresets
 fun CompactCardComponent(
     modifier: Modifier = Modifier,
     cardName: String = "Card Name",
+    categoryName: String = "Harian",
     colorPresetId: Int = 0,
     completedCount: Int = 0,
     totalCount: Int = 0,
@@ -33,84 +35,130 @@ fun CompactCardComponent(
     onCardClick: () -> Unit = {},
     onItemCheckChange: (String, Boolean) -> Unit = { _, _ -> }
 ) {
-    val colorPreset = ColorPresets.getPresetById(colorPresetId)
-    val backgroundColor = colorPreset.backgroundColor
-    val progressPercentage = if (totalCount > 0) (completedCount * 100) / totalCount else 0
+    val preset = ColorPresets.getPresetById(colorPresetId)
+
+    val backgroundColor = preset.backgroundColor
+    val contentColor = contentColorFor(backgroundColor)
+    val accentColor = preset.primaryColor
+    val textColor = preset.textColor
+
+
+    val progress = if (totalCount > 0) {
+        completedCount.toFloat() / totalCount
+    } else 0f
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .clickable { onCardClick() },
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = backgroundColor
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp
-        )
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Header: Progress text
+
+            // 🔹 HEADER
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                CategoryChip(
+                    name = categoryName,
+                    accentColor = accentColor,
+                    textColor = textColor
+                )
+
                 Text(
-                    text = "$completedCount/$totalCount item selesai",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Black.copy(alpha = 0.6f)
+                    text = "$completedCount/$totalCount selesai",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = textColor.copy(alpha = 0.7f)
                 )
             }
 
-            // Card Title
+            // 🔹 TITLE
             Text(
                 text = cardName,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.Black
+                color = textColor
             )
 
-            // Checklist Items (max 3)
+            // 🔹 ITEMS
             if (items.isNotEmpty()) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items.take(3).forEach { item ->
                         ChecklistItemRow(
                             item = item,
-                            onCheckChange = { onItemCheckChange(item.id, !item.isChecked) }
+                            contentColor = contentColor,
+                            accentColor = accentColor,
+                            onCheckChange = {
+                                onItemCheckChange(item.id, !item.isChecked)
+                            }
                         )
                     }
                 }
             } else {
                 Text(
-                    text = "Tidak ada item",
+                    text = "Belum ada langkah",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Black.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(vertical = 4.dp)
+                    color = textColor.copy(alpha = 0.5f)
                 )
             }
 
-            // Progress Bar with Percentage
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            // 🔹 PROGRESS
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+
                 LinearProgressIndicator(
-                    progress = { progressPercentage / 100f },
+                    progress = { progress },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = Color(0xFF26D3C8),
-                    trackColor = Color.White.copy(alpha = 0.3f)
+                        .weight(1f)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(50)),
+                    color = textColor,
+                    trackColor = contentColor.copy(alpha = 0.15f)
+                )
+
+                Text(
+                    text = "${(progress * 100).toInt()}%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = textColor.copy(alpha = 0.7f)
                 )
             }
         }
+    }
+}
+
+@Composable
+fun CategoryChip(
+    name: String,
+    accentColor: Color,
+    textColor: Color
+) {
+    Box(
+        modifier = Modifier
+            .background(
+                color = accentColor.copy(alpha = 0.15f),
+                shape = RoundedCornerShape(10.dp)
+            )
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.labelSmall,
+            color = textColor
+        )
     }
 }
 
@@ -120,29 +168,39 @@ fun CompactCardComponent(
 @Composable
 fun ChecklistItemRow(
     item: ChecklistItemPreview,
+    contentColor: Color,
+    accentColor: Color,
     onCheckChange: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckChange() },
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Checkbox icon
+
         Icon(
             imageVector = Icons.Default.CheckCircle,
-            contentDescription = if (item.isChecked) "Checked" else "Unchecked",
-            tint = if (item.isChecked) Color(0xFF26D3C8) else Color.Gray.copy(alpha = 0.3f),
-            modifier = Modifier
-                .size(20.dp)
-                .clickable { onCheckChange() }
+            contentDescription = null,
+            tint = if (item.isChecked)
+                accentColor
+            else
+                contentColor.copy(alpha = 0.3f),
+            modifier = Modifier.size(20.dp)
         )
 
-        // Item name
         Text(
             text = item.name,
             style = MaterialTheme.typography.bodyMedium,
-            color = if (item.isChecked) Color.Black.copy(alpha = 0.5f) else Color.Black,
-            textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None
+            color = if (item.isChecked)
+                contentColor.copy(alpha = 0.5f)
+            else
+                contentColor,
+            textDecoration = if (item.isChecked)
+                TextDecoration.LineThrough
+            else
+                TextDecoration.None
         )
     }
 }
