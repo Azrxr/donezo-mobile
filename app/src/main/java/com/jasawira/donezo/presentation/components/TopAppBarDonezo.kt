@@ -1,23 +1,25 @@
 package com.jasawira.donezo.presentation.components
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.jasawira.donezo.R
+
 import com.jasawira.donezo.presentation.theme.Spacing
 
 /**
  * TopAppBarDonezo
- * Custom top app bar dengan branding Donezo + search + settings
+ * Custom top app bar tanpa bayangan kasar, berpadu mulus dengan latar.
  */
 @Composable
 fun TopAppBarDonezo(
@@ -25,16 +27,13 @@ fun TopAppBarDonezo(
     searchValue: String = "",
     onSearchChange: (String) -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    backgroundColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surface
+    backgroundColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.background
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 3.dp,
-                spotColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.1f)
-            )
-            .padding(horizontal = Spacing.lg, vertical = Spacing.md)
+            .background(backgroundColor)
+            .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         // Header: Logo + Brand + Settings
         Row(
@@ -45,23 +44,22 @@ fun TopAppBarDonezo(
             // Logo + Brand Name
             Row(
                 modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Logo Icon
                 Image(
                     painter = painterResource(id = R.drawable.ic_brand_nobg),
                     contentDescription = "Donezo Logo",
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(34.dp)
                 )
 
-                // Brand Name
                 Text(
                     text = "Donezo",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 0.5.sp
                     ),
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -71,21 +69,20 @@ fun TopAppBarDonezo(
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Settings,
+                    imageVector = Icons.Rounded.Settings,
                     contentDescription = "Settings",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(Spacing.md))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Search Bar
+        // Search Bar (Pill Shape)
         SearchBarComponent(
             searchQuery = searchValue,
             onSearchChange = onSearchChange,
-            placeholder = "Cari kartu atau item..."
+            placeholder = "Cari tugas atau item..."
         )
     }
 }
-

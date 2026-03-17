@@ -1,8 +1,7 @@
 package com.jasawira.donezo.presentation.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -15,7 +14,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * SearchBarComponent
- * Search bar yang always visible di Home
+ * Search bar elegan berbentuk Pill (Kapsul)
  */
 @Composable
 fun SearchBarComponent(
@@ -29,8 +28,9 @@ fun SearchBarComponent(
         onValueChange = onSearchChange,
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp),
-        shape = RoundedCornerShape(16.dp),
+            .height(52.dp) // Ukuran standar yang nyaman diketik
+            .padding(horizontal = 4.dp), // Beri sedikit nafas
+        shape = CircleShape, // Bentuk Pill modern
         placeholder = {
             Text(
                 text = placeholder,
@@ -42,22 +42,27 @@ fun SearchBarComponent(
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = "Search",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
             )
         },
         trailingIcon = {
             if (searchQuery.isNotEmpty()) {
                 IconButton(onClick = { onSearchChange("") }) {
-                    Icon(Icons.Default.Close, contentDescription = "Clear")
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Clear",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         },
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Color.Transparent,
-            unfocusedBorderColor = Color.Transparent,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+            unfocusedBorderColor = Color.Transparent, // Hilangkan border saat tidak diklik
+            focusedContainerColor = MaterialTheme.colorScheme.surface, // Sedikit cerah saat diketik
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), // Redup saat tidak aktif
+            cursorColor = MaterialTheme.colorScheme.primary
         )
     )
 }
@@ -67,5 +72,3 @@ fun SearchBarComponent(
 fun SearchBarComponentPreview() {
     SearchBarComponent()
 }
-
-
