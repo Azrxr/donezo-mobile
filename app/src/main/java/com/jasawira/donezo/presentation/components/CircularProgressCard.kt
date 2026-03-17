@@ -13,8 +13,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jasawira.donezo.presentation.theme.ColorPresets
 
 /**
  * CircularProgressCard
@@ -24,11 +26,19 @@ import androidx.compose.ui.unit.sp
 fun CircularProgressCard(
     modifier: Modifier = Modifier,
     progress: Float = 0f, // 0.0 to 1.0
-    backgroundColor: Color = Color(0xFFE0F2F1),
-    progressColor: Color = Color(0xFF26D3C8),
+    colorPresetId: Int = 0,
     completedCount: Int = 0,
     totalCount: Int = 0
 ) {
+
+    val preset = ColorPresets.getPresetById(colorPresetId)
+
+    val backgroundColor = preset.backgroundColor
+    val accentColor = preset.primaryColor
+    val textColor = preset.textColor
+
+    val contentColor = contentColorFor(backgroundColor)
+
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = tween(durationMillis = 1000),
@@ -62,7 +72,7 @@ fun CircularProgressCard(
                 Text(
                     text = "PROGRES",
                     style = MaterialTheme.typography.labelMedium,
-                    color = progressColor,
+                    color = textColor,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 1.5.sp
                 )
@@ -71,7 +81,7 @@ fun CircularProgressCard(
                     text = "$percentage%",
                     style = MaterialTheme.typography.displayMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = textColor
                 )
 
                 Text(
@@ -83,7 +93,7 @@ fun CircularProgressCard(
                         else -> "Mari mulai! ✨"
                     },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Black.copy(alpha = 0.7f)
+                    color = contentColor.copy(alpha = 0.7f)
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -94,8 +104,8 @@ fun CircularProgressCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp),
-                    color = progressColor,
-                    trackColor = Color.White.copy(alpha = 0.3f),
+                    color = accentColor,
+                    trackColor = contentColor.copy(alpha = 0.3f),
                     strokeCap = StrokeCap.Round
                 )
             }
@@ -111,13 +121,13 @@ fun CircularProgressCard(
                 Canvas(modifier = Modifier.size(120.dp)) {
                     // Background circle
                     drawCircle(
-                        color = Color.White.copy(alpha = 0.3f),
+                        color = contentColor.copy(alpha = 0.3f),
                         style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
                     )
 
                     // Progress arc
                     drawArc(
-                        color = progressColor,
+                        color = accentColor,
                         startAngle = -90f,
                         sweepAngle = 360f * animatedProgress,
                         useCenter = false,
@@ -133,5 +143,11 @@ fun CircularProgressCard(
             }
         }
     }
+}
+
+@Composable
+@Preview(showBackground = true)
+fun CircularProgressCardPreview() {
+    CircularProgressCard()
 }
 

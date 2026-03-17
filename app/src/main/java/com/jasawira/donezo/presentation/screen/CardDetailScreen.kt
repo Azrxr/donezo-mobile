@@ -1,15 +1,22 @@
+@file:Suppress(
+    "UNUSED_VARIABLE",
+    "UNUSED_IMPORT",
+    "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE",
+    "UNUSED_VALUE"
+)
+
 package com.jasawira.donezo.presentation.screen
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,44 +34,57 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jasawira.donezo.domain.model.ChecklistItem
 import com.jasawira.donezo.presentation.components.*
 import com.jasawira.donezo.presentation.theme.ColorPresets
+import com.jasawira.donezo.presentation.theme.softBackground
+import com.jasawira.donezo.presentation.theme.contentColor
+import com.jasawira.donezo.presentation.theme.borderColor
+import com.jasawira.donezo.presentation.theme.DonezoTheme
 import com.jasawira.donezo.presentation.uistate.CardDetailUiEvent
 import com.jasawira.donezo.presentation.uistate.CardDetailUiState
 import com.jasawira.donezo.presentation.uistate.SnackbarEvent
 import com.jasawira.donezo.presentation.viewmodel.CardDetailViewModel
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
  * CardDetailScreenRedesign
- * Detail screen dengan design baru sesuai gambar
+ * Detail screen dengan design baru sesuai gambar dan Full Color Theming
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class) // <-- Tambahan Animate Item Placement
 @Composable
-fun CardDetailScreenRedesign(
+fun CardDetailScreen(
     modifier: Modifier = Modifier,
     cardId: String,
     viewModel: CardDetailViewModel = hiltViewModel(),
     onBackClick: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val selectedItems by viewModel.selectedItems.collectAsState()
-    val newItemName by viewModel.newItemName.collectAsState()
+
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val selectedItems by viewModel.selectedItems.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showMenu by remember { mutableStateOf(false) }
-    var showAddItemSheet by remember { mutableStateOf(false) }
 
-    // Load card detail
+    // STATE UNTUK ADD / EDIT BOTTOM SHEET ITEM
+    var showSheet by remember { mutableStateOf(false) }
+    var itemToEdit by remember { mutableStateOf<ChecklistItem?>(null) }
+
+    // STATE UNTUK EDIT CARD UTAMA
+    var showEditCardDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(cardId) {
         viewModel.loadCardDetail(cardId)
     }
 
-    // Listen to snackbar events
-    LaunchedEffect(Unit) {
-        viewModel.snackbarEvent.collect { event ->
+    LaunchedEffect(viewModel) {
+        viewModel.snackbarEvent.collectLatest { event ->
             scope.launch {
                 when (event) {
                     is SnackbarEvent.Success -> snackbarHostState.showSnackbar(event.message)
@@ -76,60 +96,52 @@ fun CardDetailScreenRedesign(
         }
     }
 
+    val currentPreset = remember(uiState) {
+        if (uiState is CardDetailUiState.Success) {
+            val presetId = (uiState as CardDetailUiState.Success).cardWithItems?.card?.colorPresetId ?: 1
+            ColorPresets.getPresetById(presetId)
+        } else {
+            ColorPresets.pastelBlue
+        }
+    }
+
     Scaffold(
+        containerColor = currentPreset.backgroundColor.copy(alpha = 0.3f),
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = currentPreset.backgroundColor,
+                    titleContentColor = currentPreset.textColor,
+                    navigationIconContentColor = currentPreset.textColor,
+                    actionIconContentColor = currentPreset.textColor
+                ),
                 title = {
                     val cardName = (uiState as? CardDetailUiState.Success)?.cardWithItems?.card?.name ?: ""
                     Text(cardName)
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Kembali"
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 },
                 actions = {
-                    // Show action buttons when items selected
                     if (selectedItems.isNotEmpty()) {
-                        // Mark as completed button
-                        IconButton(onClick = {
-                            viewModel.markSelectedItemsAsCompleted()
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Tandai Selesai",
-                                tint = Color(0xFF26D3C8)
-                            )
+                        IconButton(onClick = { viewModel.markSelectedItemsAsCompleted() }) {
+                            Icon(Icons.Default.Check, contentDescription = "Tandai Selesai", tint = currentPreset.primaryColor)
                         }
-                        // Delete button
-                        IconButton(onClick = {
-                            viewModel.deleteSelectedItems()
-                        }) {
-                            Badge(
-                                containerColor = MaterialTheme.colorScheme.error
-                            ) {
-                                Text("${selectedItems.size}")
+                        IconButton(onClick = { viewModel.deleteSelectedItems() }) {
+                            Badge(containerColor = MaterialTheme.colorScheme.error) {
+                                Text("${selectedItems.size}", color = MaterialTheme.colorScheme.onError)
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Hapus",
-                                tint = MaterialTheme.colorScheme.error
-                            )
+                            Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error)
                         }
                     } else {
                         IconButton(onClick = { showMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Menu"
-                            )
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
                         }
                     }
 
-                    // Dropdown menu
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
@@ -138,7 +150,7 @@ fun CardDetailScreenRedesign(
                             text = { Text("Edit Card") },
                             onClick = {
                                 showMenu = false
-                                // TODO: Open edit card dialog
+                                showEditCardDialog = true
                             }
                         )
                         DropdownMenuItem(
@@ -158,13 +170,8 @@ fun CardDetailScreenRedesign(
     ) { paddingValues ->
         when (val state = uiState) {
             is CardDetailUiState.Loading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = currentPreset.primaryColor)
                 }
             }
 
@@ -173,88 +180,88 @@ fun CardDetailScreenRedesign(
                 if (cardWithItems != null) {
                     val card = cardWithItems.card
                     val items = cardWithItems.items
-                    val colorPreset = ColorPresets.getPresetById(card.colorPresetId)
 
-                    // Split items by checked status
-                    val upcomingItems = items.filter { !it.isChecked }
-                    val completedItems = items.filter { it.isChecked }
-                    val progress = if (items.isNotEmpty()) items.count { it.isChecked }.toFloat() / items.size else 0f
+                    val upcomingItems by remember(items) { mutableStateOf(items.filter { !it.isChecked }) }
+                    val completedItems by remember(items) { mutableStateOf(items.filter { it.isChecked }) }
+                    val progress by remember(items) {
+                        mutableStateOf(if (items.isNotEmpty()) items.count { it.isChecked }.toFloat() / items.size else 0f)
+                    }
 
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues),
+                        modifier = Modifier.fillMaxSize().padding(paddingValues),
                         verticalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
-                        // Progress Card
                         item {
                             CircularProgressCard(
+                                colorPresetId = card.colorPresetId,
                                 progress = progress,
-                                backgroundColor = colorPreset.backgroundColor,
-                                progressColor = colorPreset.primaryColor,
                                 completedCount = completedItems.size,
                                 totalCount = items.size
                             )
                         }
 
-                        // Upcoming Tasks Section
                         item {
-                            SectionHeader(
-                                title = "BELUM SELESAI",
-                                count = upcomingItems.size
-                            )
+                            SectionHeader(title = "BELUM SELESAI", count = upcomingItems.size)
                         }
 
-                        // Upcoming items with edit mode support
-                        itemsIndexed(upcomingItems, key = { _, item -> item.id }) { index, item ->
+                        items(upcomingItems, key = { it.id }) { item ->
                             ReorderableItemWrapper(
+                                modifier = Modifier.animateItem(
+                                    placementSpec = tween(durationMillis = 400)
+                                ),
                                 isSelected = selectedItems.contains(item.id),
+                                accentColor = currentPreset.primaryColor,
                                 onTap = {
-                                    // Toggle selection hanya jika sudah ada selection
                                     if (selectedItems.isNotEmpty()) {
                                         viewModel.toggleItemSelection(item.id)
+                                    } else {
+                                        itemToEdit = item
+                                        showSheet = true
                                     }
                                 },
                                 onLongPress = {
-                                    // Long press selalu toggle selection (first long press akan select)
                                     viewModel.toggleItemSelection(item.id)
                                 }
                             ) {
                                 DetailChecklistItem(
+                                    modifier = Modifier.padding(
+                                        horizontal = 8.dp,
+                                        vertical = 4.dp
+
+                                    ),
                                     itemName = item.itemName,
                                     isChecked = item.isChecked,
                                     isSelected = selectedItems.contains(item.id),
+                                    deadline = item.deadline,
+                                    time = item.notificationTime,
+                                    hasReminder = item.isNotificationEnabled,
                                     onCheckChange = {
-                                        viewModel.onEvent(
-                                            CardDetailUiEvent.ChecklistItemStatusChanged(item.id, !item.isChecked)
-                                        )
+                                        viewModel.onEvent(CardDetailUiEvent.ChecklistItemStatusChanged(item.id, !item.isChecked))
                                     },
-                                    onItemClick = {
-                                        if (selectedItems.isNotEmpty() || selectedItems.contains(item.id)) {
-                                            viewModel.toggleItemSelection(item.id)
-                                        }
-                                    },
-                                    backgroundColor = Color.White
+                                    backgroundColor = currentPreset.softBackground()
                                 )
                             }
                         }
 
-                        // Completed Section
                         if (completedItems.isNotEmpty()) {
                             item {
                                 Spacer(modifier = Modifier.height(16.dp))
-                                SectionHeader(
-                                    title = "SELESAI",
-                                    count = completedItems.size
-                                )
+                                SectionHeader(title = "SELESAI", count = completedItems.size)
                             }
 
-                            itemsIndexed(completedItems, key = { _, item -> item.id }) { index, item ->
+                            items(completedItems, key = { it.id }) { item ->
                                 ReorderableItemWrapper(
+                                    modifier = Modifier.animateItem(
+                                        placementSpec = tween(durationMillis = 400)
+                                    ), // <-- API baru untuk Compose 1.7+
                                     isSelected = selectedItems.contains(item.id),
+                                    accentColor = currentPreset.primaryColor,
                                     onTap = {
                                         if (selectedItems.isNotEmpty()) {
                                             viewModel.toggleItemSelection(item.id)
+                                        } else {
+                                            itemToEdit = item
+                                            showSheet = true
                                         }
                                     },
                                     onLongPress = {
@@ -262,54 +269,52 @@ fun CardDetailScreenRedesign(
                                     }
                                 ) {
                                     DetailChecklistItem(
+                                        modifier = Modifier.padding(
+                                            horizontal = 8.dp,
+                                            vertical = 4.dp
+                                        ),
                                         itemName = item.itemName,
                                         isChecked = item.isChecked,
                                         isSelected = selectedItems.contains(item.id),
+                                        deadline = item.deadline,
+                                        time = item.notificationTime,
+                                        hasReminder = item.isNotificationEnabled,
                                         onCheckChange = {
-                                            viewModel.onEvent(
-                                                CardDetailUiEvent.ChecklistItemStatusChanged(item.id, !item.isChecked)
-                                            )
+                                            viewModel.onEvent(CardDetailUiEvent.ChecklistItemStatusChanged(item.id, !item.isChecked))
                                         },
-                                        onItemClick = {
-                                            if (selectedItems.isNotEmpty() || selectedItems.contains(item.id)) {
-                                                viewModel.toggleItemSelection(item.id)
-                                            }
-                                        },
-                                        backgroundColor = colorPreset.backgroundColor.copy(alpha = 0.3f)
+                                        backgroundColor = currentPreset.softBackground()
                                     )
                                 }
                             }
                         }
 
-                        // Inline Add Item - Click to open bottom sheet
                         item {
                             Spacer(modifier = Modifier.height(16.dp))
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 20.dp, vertical = 8.dp)
-                                    .clickable { showAddItemSheet = true },
+                                    .clickable {
+                                        itemToEdit = null
+                                        showSheet = true
+                                    },
                                 shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = Color.White
-                                )
+                                colors = CardDefaults.cardColors(containerColor = currentPreset.softBackground())
                             ) {
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Add,
                                         contentDescription = "Tambah",
-                                        tint = colorPreset.primaryColor,
+                                        tint = currentPreset.accentColor,
                                         modifier = Modifier.size(24.dp)
                                     )
                                     Text(
                                         text = "Tambah item baru...",
-                                        color = Color.Gray.copy(alpha = 0.5f),
+                                        color = currentPreset.textColor.copy(alpha = 0.5f),
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
@@ -318,82 +323,90 @@ fun CardDetailScreenRedesign(
                         }
                     }
                 } else {
-                    // No data
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                         Text("Card tidak ditemukan")
                     }
                 }
             }
 
             is CardDetailUiState.Error -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Error: ${state.message}")
-                        Button(onClick = { viewModel.loadCardDetail(cardId) }) {
-                            Text("Coba Lagi")
-                        }
+                        Button(onClick = { viewModel.loadCardDetail(cardId) }) { Text("Coba Lagi") }
                     }
                 }
             }
         }
     }
 
-    // Add Item Bottom Sheet
-    if (showAddItemSheet) {
-        AddItemBottomSheet(
-            onDismiss = { showAddItemSheet = false },
-            onAddItem = { itemName, deadlineDate, deadlineTime, reminderMinutes ->
-                viewModel.addNewItemSimple(
-                    itemName = itemName,
-                    deadlineDate = deadlineDate,
-                    deadlineTime = deadlineTime,
-                    reminderMinutesBefore = reminderMinutes
-                )
+    // BOTTOM SHEET UNTUK ADD / EDIT ITEM TASK
+    if (showSheet) {
+        ItemBottomSheet(
+            isEditMode = itemToEdit != null,
+            initialName = itemToEdit?.itemName ?: "",
+            initialDate = itemToEdit?.deadline,
+            initialTime = itemToEdit?.notificationTime,
+            initialReminderMinutes = if (itemToEdit?.isNotificationEnabled == true) itemToEdit?.notificationMinutesBefore else null,
+            onDismiss = {
+                showSheet = false
+                itemToEdit = null
             },
-            buttonColor = (uiState as? CardDetailUiState.Success)?.cardWithItems?.let { cardWithItems ->
-                ColorPresets.getPresetById(cardWithItems.card.colorPresetId).primaryColor
-            } ?: Color(0xFF26D3C8)
+            onSave = { itemName, deadlineDate, deadlineTime, reminderMinutes ->
+                if (itemToEdit != null) {
+                    viewModel.updateItemSimple(itemToEdit!!.id, itemName, deadlineDate, deadlineTime, reminderMinutes)
+                } else {
+                    viewModel.addNewItemSimple(itemName, deadlineDate, deadlineTime, reminderMinutes)
+                }
+                showSheet = false
+                itemToEdit = null
+            },
+            buttonColor = currentPreset.primaryColor
         )
+    }
+
+    // BOTTOM SHEET UNTUK EDIT CARD UTAMA
+    if (showEditCardDialog) {
+        val currentCard = (uiState as? CardDetailUiState.Success)?.cardWithItems?.card
+        if (currentCard != null) {
+            CardDialog(
+                isEditMode = true,
+                initialName = currentCard.name,
+                initialCategoryId = currentCard.categoryId,
+                initialColorPresetId = currentCard.colorPresetId,
+                categories = categories,
+                onDismiss = { showEditCardDialog = false },
+                onSave = { name, existingCategoryId, newCategoryName, colorPresetId ->
+                    val finalCategoryId = if (!newCategoryName.isNullOrBlank()) {
+                        viewModel.addCategory(newCategoryName)
+                    } else {
+                        existingCategoryId ?: ""
+                    }
+                    viewModel.updateCardDetails(cardId, name, finalCategoryId, colorPresetId)
+                    showEditCardDialog = false
+                },
+                buttonColor = currentPreset.primaryColor
+            )
+        }
     }
 }
 
 /**
- * ReorderableItemWrapper
- * Wrapper untuk item dengan edit mode support:
- * - Shake animation saat dalam edit mode (selected)
- * - Visual feedback saat ditekan (scale + elevation)
- * - Selection indicator dengan border
- * - Long press untuk masuk edit mode (select item)
+ * ReorderableItemWrapper: Sekarang bersih tanpa border. Hanya efek scale/elevation/shake!
  */
 @Composable
 fun ReorderableItemWrapper(
     modifier: Modifier = Modifier,
     isSelected: Boolean,
+    accentColor: Color,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
     content: @Composable () -> Unit
 ) {
     val hapticFeedback = LocalHapticFeedback.current
-
-    // Shake animation for selected items (edit mode)
     val rotationAngle = remember { Animatable(0f) }
-    
-    // Random values for natural shake effect
-    val randomDelay = remember { (0..100).random() }
-    val amplitude = remember { 1.2f + (0..8).random() / 10f }
+    val randomDelay = remember { (0..150).random() }
+    val amplitude = remember { 1.5f + (0..10).random() / 10f }
 
     LaunchedEffect(isSelected) {
         if (isSelected) {
@@ -401,10 +414,7 @@ fun ReorderableItemWrapper(
             rotationAngle.animateTo(
                 targetValue = amplitude,
                 animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-                    animation = tween(
-                        durationMillis = 100 + (0..50).random(),
-                        easing = androidx.compose.animation.core.FastOutSlowInEasing
-                    ),
+                    animation = tween(100 + (0..50).random(), easing = androidx.compose.animation.core.FastOutSlowInEasing),
                     repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
                 )
             )
@@ -415,21 +425,15 @@ fun ReorderableItemWrapper(
 
     var isPressed by remember { mutableStateOf(false) }
 
-    // Animated values
-    val borderColor by animateColorAsState(
-        targetValue = if (isSelected) Color(0xFF26D3C8) else Color.Transparent,
-        label = "border"
-    )
-
     val itemScale by animateFloatAsState(
-        targetValue = if (isPressed) 1.01f else 1f,
-        animationSpec = tween(durationMillis = 150),
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = tween(150),
         label = "scale"
     )
 
     val itemElevation by animateFloatAsState(
         targetValue = if (isPressed) 2f else 0f,
-        animationSpec = tween(durationMillis = 150),
+        animationSpec = tween(150),
         label = "elevation"
     )
 
@@ -441,7 +445,7 @@ fun ReorderableItemWrapper(
                 scaleY = itemScale
                 shadowElevation = itemElevation
             }
-            .pointerInput(Unit) {
+            .pointerInput(isSelected) {
                 detectTapGestures(
                     onPress = {
                         isPressed = true
@@ -456,22 +460,14 @@ fun ReorderableItemWrapper(
                 )
             }
     ) {
-        // Content with selection border
-        Box(
-            modifier = Modifier
-                .then(
-                    if (isSelected) {
-                        Modifier
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                            .border(2.dp, borderColor, RoundedCornerShape(12.dp))
-                    } else {
-                        Modifier
-                    }
-                )
-        ) {
-            content()
-        }
+        content()
     }
 }
 
-
+@Composable
+@Preview(showBackground = true)
+fun CardDetailScreenRedesignPreview() {
+    DonezoTheme {
+        CardDetailScreen(cardId = "preview")
+    }
+}

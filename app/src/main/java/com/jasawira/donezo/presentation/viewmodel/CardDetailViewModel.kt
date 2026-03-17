@@ -2,14 +2,17 @@ package com.jasawira.donezo.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jasawira.donezo.domain.model.Category
 import com.jasawira.donezo.domain.model.ChecklistItem
 import com.jasawira.donezo.domain.repository.CardRepository
+import com.jasawira.donezo.domain.repository.CategoryRepository
 import com.jasawira.donezo.domain.repository.ChecklistRepository
 import com.jasawira.donezo.notification.AlarmScheduler
 import com.jasawira.donezo.presentation.uistate.CardDetailUiEvent
 import com.jasawira.donezo.presentation.uistate.CardDetailUiState
 import com.jasawira.donezo.presentation.uistate.SnackbarEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,68 +22,69 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 
-/**
- * CardDetailViewModel
- * Mengelola state untuk Card Detail Screen
- * 
- * Fitur:
- * - Fetch card dengan items-nya
- * - CRUD operations untuk items
- * - Check/uncheck items
- * - Drag-drop reorder items
- * - Edit card (name, color, category)
- * - Schedule/cancel notifications
- */
 @HiltViewModel
 class CardDetailViewModel @Inject constructor(
     private val cardRepository: CardRepository,
     private val checklistRepository: ChecklistRepository,
+    private val categoryRepository: CategoryRepository,
     private val alarmScheduler: AlarmScheduler
 ) : ViewModel() {
 
-    // UI STATE
     private val _uiState = MutableStateFlow<CardDetailUiState>(CardDetailUiState.Loading)
     val uiState: StateFlow<CardDetailUiState> = _uiState.asStateFlow()
 
-    // SNACKBAR EVENT
     private val _snackbarEvent = MutableSharedFlow<SnackbarEvent>()
     val snackbarEvent = _snackbarEvent.asSharedFlow()
 
-    // CURRENT CARD ID
     private val _currentCardId = MutableStateFlow<String?>(null)
     val currentCardId: StateFlow<String?> = _currentCardId.asStateFlow()
 
-    // SELECTED ITEMS (for multi-select delete)
     private val _selectedItems = MutableStateFlow<Set<String>>(emptySet())
     val selectedItems: StateFlow<Set<String>> = _selectedItems.asStateFlow()
 
-    // NEW ITEM INPUT
     private val _newItemName = MutableStateFlow("")
     val newItemName: StateFlow<String> = _newItemName.asStateFlow()
 
-    /**
-     * Load card detail dengan items
-     */
+    private val _categories = MutableStateFlow<List<Category>>(emptyList())
+    val categories: StateFlow<List<Category>> = _categories.asStateFlow()
+
+    private var detailJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            categoryRepository.getAllCategories().collect {
+                _categories.value = it
+            }
+        }
+    }
+
     fun loadCardDetail(cardId: String) {
         _currentCardId.value = cardId
-        
-        viewModelScope.launch {
-            try {
-                _uiState.value = CardDetailUiState.Loading
 
-                // Combine card data dengan items
+        detailJob?.cancel()
+        detailJob = viewModelScope.launch {
+            try {
+                if (_uiState.value !is CardDetailUiState.Success) {
+                    _uiState.value = CardDetailUiState.Loading
+                }
+
+                // Flow ini otomatis mengirim pembaruan setiap kali Database Items berubah!
                 checklistRepository.getItemsByCard(cardId).collect { items ->
                     val cardWithItems = cardRepository.getCardWithItems(cardId)
-                    
+
                     _uiState.value = CardDetailUiState.Success(
                         cardWithItems = cardWithItems,
                         isEditingCard = false,
                         editingItemId = null,
-                        isDarkMode = false // TODO: Get from settings
+                        isDarkMode = false
                     )
                 }
             } catch (e: Exception) {
+                // PENTING: Abaikan jika error disebabkan oleh job yang sengaja di-cancel
+                if (e is CancellationException) throw e
+
                 _uiState.value = CardDetailUiState.Error(
                     e.message ?: "Gagal memuat card detail"
                 )
@@ -88,9 +92,6 @@ class CardDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Handle UI Events
-     */
     fun onEvent(event: CardDetailUiEvent) {
         when (event) {
             is CardDetailUiEvent.UpdateCardName -> updateCardName(event.cardId, event.newName)
@@ -107,27 +108,16 @@ class CardDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Update card name
-     */
     private fun updateCardName(cardId: String, newName: String) {
-        if (newName.isBlank()) {
-            viewModelScope.launch {
-                _snackbarEvent.emit(SnackbarEvent.Error("Nama card tidak boleh kosong"))
-            }
-            return
-        }
-
+        if (newName.isBlank()) return
         viewModelScope.launch {
             try {
                 val currentState = _uiState.value
                 if (currentState is CardDetailUiState.Success && currentState.cardWithItems != null) {
-                    val updatedCard = currentState.cardWithItems.card.copy(
-                        name = newName
-                    )
+                    val updatedCard = currentState.cardWithItems.card.copy(name = newName)
                     cardRepository.updateCard(updatedCard)
                     _snackbarEvent.emit(SnackbarEvent.Success("Nama card berhasil diupdate"))
-                    loadCardDetail(cardId)
+                    loadCardDetail(cardId) // Perlu direfresh karena Flow di atas mendeteksi Item, bukan Card
                 }
             } catch (e: Exception) {
                 _snackbarEvent.emit(SnackbarEvent.Error("Gagal update nama card"))
@@ -135,17 +125,12 @@ class CardDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Update card color
-     */
     private fun updateCardColor(cardId: String, colorPresetId: Int) {
         viewModelScope.launch {
             try {
                 val currentState = _uiState.value
                 if (currentState is CardDetailUiState.Success && currentState.cardWithItems != null) {
-                    val updatedCard = currentState.cardWithItems.card.copy(
-                        colorPresetId = colorPresetId
-                    )
+                    val updatedCard = currentState.cardWithItems.card.copy(colorPresetId = colorPresetId)
                     cardRepository.updateCard(updatedCard)
                     _snackbarEvent.emit(SnackbarEvent.Success("Warna card berhasil diubah"))
                     loadCardDetail(cardId)
@@ -156,17 +141,12 @@ class CardDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Update card category
-     */
     private fun updateCardCategory(cardId: String, newCategoryId: String) {
         viewModelScope.launch {
             try {
                 val currentState = _uiState.value
                 if (currentState is CardDetailUiState.Success && currentState.cardWithItems != null) {
-                    val updatedCard = currentState.cardWithItems.card.copy(
-                        categoryId = newCategoryId
-                    )
+                    val updatedCard = currentState.cardWithItems.card.copy(categoryId = newCategoryId)
                     cardRepository.updateCard(updatedCard)
                     _snackbarEvent.emit(SnackbarEvent.Success("Kategori card berhasil diubah"))
                     loadCardDetail(cardId)
@@ -177,51 +157,66 @@ class CardDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Toggle item checked status
-     * Trigger confetti animation saat check
-     */
+    fun updateCardDetails(cardId: String, name: String, categoryId: String, colorPresetId: Int) {
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            try {
+                val currentState = _uiState.value
+                if (currentState is CardDetailUiState.Success && currentState.cardWithItems != null) {
+                    val updatedCard = currentState.cardWithItems.card.copy(
+                        name = name,
+                        categoryId = categoryId,
+                        colorPresetId = colorPresetId
+                    )
+                    cardRepository.updateCard(updatedCard)
+                    _snackbarEvent.emit(SnackbarEvent.Success("Detail tugas berhasil disimpan"))
+                    loadCardDetail(cardId)
+                }
+            } catch (e: Exception) {
+                _snackbarEvent.emit(SnackbarEvent.Error("Gagal menyimpan perubahan"))
+            }
+        }
+    }
+
+    fun addCategory(name: String): String {
+        val categoryId = UUID.randomUUID().toString()
+        viewModelScope.launch {
+            try {
+                val category = Category(id = categoryId, name = name, createdAt = LocalDateTime.now())
+                categoryRepository.addCategory(category)
+                _snackbarEvent.emit(SnackbarEvent.Success("Kategori '$name' berhasil ditambahkan"))
+            } catch (e: Exception) {
+                _snackbarEvent.emit(SnackbarEvent.Error("Gagal menambah kategori"))
+            }
+        }
+        return categoryId
+    }
+
+    // --- OPERASI ITEM CHECKLIST (Tanpa pemanggilan loadCardDetail() manual karena Flow auto-update) ---
+
     private fun toggleItemStatus(itemId: String, isChecked: Boolean) {
         viewModelScope.launch {
             try {
                 checklistRepository.updateItemCheckedStatus(itemId, isChecked)
-                
                 if (isChecked) {
                     _snackbarEvent.emit(SnackbarEvent.Success("Item berhasil diselesaikan! 🎉"))
-                } else {
-                    _snackbarEvent.emit(SnackbarEvent.Info("Item ditandai belum selesai"))
                 }
-
-                // Refresh untuk update progress
-                _currentCardId.value?.let { loadCardDetail(it) }
+                // Dihapus: _currentCardId.value?.let { loadCardDetail(it) } -> Flow akan merespon secara otomatis!
             } catch (e: Exception) {
                 _snackbarEvent.emit(SnackbarEvent.Error("Gagal update item status"))
             }
         }
     }
 
-    /**
-     * Delete item dengan konfirmasi
-     */
     private fun deleteItem(itemId: String) {
         viewModelScope.launch {
             try {
-                // Get item detail untuk notif cancel
                 val currentState = _uiState.value
                 if (currentState is CardDetailUiState.Success && currentState.cardWithItems != null) {
                     val item = currentState.cardWithItems.items.find { it.id == itemId }
-                    
-                    // Cancel notifikasi jika ada
-                    if (item?.isNotificationEnabled == true) {
-                        alarmScheduler.cancelItemNotifications(itemId)
-                    }
-
-                    // Delete item
+                    if (item?.isNotificationEnabled == true) alarmScheduler.cancelItemNotifications(itemId)
                     checklistRepository.deleteItem(itemId)
                     _snackbarEvent.emit(SnackbarEvent.Success("Item berhasil dihapus"))
-
-                    // Refresh
-                    _currentCardId.value?.let { loadCardDetail(it) }
                 }
             } catch (e: Exception) {
                 _snackbarEvent.emit(SnackbarEvent.Error("Gagal delete item"))
@@ -229,9 +224,6 @@ class CardDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Reorder item ke posisi baru
-     */
     private fun reorderItem(itemId: String, newPosition: Int) {
         viewModelScope.launch {
             try {
@@ -242,9 +234,6 @@ class CardDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Update posisi items saat drag-drop
-     */
     private fun updateItemPositions(fromPosition: Int, toPosition: Int) {
         val currentState = _uiState.value
         if (currentState is CardDetailUiState.Success && currentState.cardWithItems != null) {
@@ -252,8 +241,6 @@ class CardDetailViewModel @Inject constructor(
             if (fromPosition < items.size && toPosition < items.size) {
                 val movedItem = items.removeAt(fromPosition)
                 items.add(toPosition, movedItem)
-
-                // Update database dengan posisi baru
                 viewModelScope.launch {
                     try {
                         items.forEachIndexed { index, item ->
@@ -267,120 +254,60 @@ class CardDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Add new item
-     */
     private fun addItem(item: ChecklistItem) {
-        if (item.itemName.isBlank()) {
-            viewModelScope.launch {
-                _snackbarEvent.emit(SnackbarEvent.Error("Nama item tidak boleh kosong"))
-            }
-            return
-        }
-
+        if (item.itemName.isBlank()) return
         viewModelScope.launch {
             try {
-                val newItem = item.copy(
-                    id = UUID.randomUUID().toString(),
-                    createdAt = LocalDateTime.now()
-                )
-
+                val newItem = item.copy(id = UUID.randomUUID().toString(), createdAt = LocalDateTime.now())
                 checklistRepository.addItem(newItem)
-
-                // Schedule notifikasi jika enabled
                 if (newItem.isNotificationEnabled && newItem.deadline != null && newItem.notificationTime != null) {
-                    val deadlineDateTime = LocalDateTime.of(
-                        newItem.deadline,
-                        newItem.notificationTime
-                    )
-                    
+                    val deadlineDateTime = LocalDateTime.of(newItem.deadline, newItem.notificationTime)
                     val currentState = _uiState.value
                     if (currentState is CardDetailUiState.Success && currentState.cardWithItems != null) {
                         alarmScheduler.scheduleItemNotifications(
-                            itemId = newItem.id,
-                            cardName = currentState.cardWithItems.card.name,
-                            itemName = newItem.itemName,
-                            deadline = deadlineDateTime,
-                            minutesBefore = newItem.notificationMinutesBefore
+                            newItem.id, currentState.cardWithItems.card.name, newItem.itemName, deadlineDateTime, newItem.notificationMinutesBefore
                         )
                     }
                 }
-
                 _snackbarEvent.emit(SnackbarEvent.Success("Item berhasil ditambahkan"))
-
-                // Refresh
-                _currentCardId.value?.let { loadCardDetail(it) }
             } catch (e: Exception) {
                 _snackbarEvent.emit(SnackbarEvent.Error("Gagal menambah item"))
             }
         }
     }
 
-    /**
-     * Update existing item
-     */
     private fun updateItem(item: ChecklistItem) {
-        if (item.itemName.isBlank()) {
-            viewModelScope.launch {
-                _snackbarEvent.emit(SnackbarEvent.Error("Nama item tidak boleh kosong"))
-            }
-            return
-        }
-
+        if (item.itemName.isBlank()) return
         viewModelScope.launch {
             try {
                 checklistRepository.updateItem(item)
-
-                // Reschedule notifikasi jika ada perubahan deadline/time
                 if (item.isNotificationEnabled && item.deadline != null && item.notificationTime != null) {
-                    val deadlineDateTime = LocalDateTime.of(
-                        item.deadline,
-                        item.notificationTime
-                    )
-
+                    val deadlineDateTime = LocalDateTime.of(item.deadline, item.notificationTime)
                     val currentState = _uiState.value
                     if (currentState is CardDetailUiState.Success && currentState.cardWithItems != null) {
                         alarmScheduler.rescheduleItemNotifications(
-                            itemId = item.id,
-                            cardName = currentState.cardWithItems.card.name,
-                            itemName = item.itemName,
-                            newDeadline = deadlineDateTime,
-                            minutesBefore = item.notificationMinutesBefore
+                            item.id, currentState.cardWithItems.card.name, item.itemName, deadlineDateTime, item.notificationMinutesBefore
                         )
                     }
                 } else {
-                    // Cancel notifikasi jika disable
                     alarmScheduler.cancelItemNotifications(item.id)
                 }
-
                 _snackbarEvent.emit(SnackbarEvent.Success("Item berhasil diupdate"))
-
-                // Refresh
-                _currentCardId.value?.let { loadCardDetail(it) }
             } catch (e: Exception) {
                 _snackbarEvent.emit(SnackbarEvent.Error("Gagal update item"))
             }
         }
     }
 
-    /**
-     * Delete card
-     */
     private fun deleteCard() {
         viewModelScope.launch {
             try {
                 val currentState = _uiState.value
                 if (currentState is CardDetailUiState.Success && currentState.cardWithItems != null) {
                     val cardId = currentState.cardWithItems.card.id
-                    
-                    // Cancel semua notifikasi untuk items dalam card ini
                     currentState.cardWithItems.items.forEach { item ->
-                        if (item.isNotificationEnabled) {
-                            alarmScheduler.cancelItemNotifications(item.id)
-                        }
+                        if (item.isNotificationEnabled) alarmScheduler.cancelItemNotifications(item.id)
                     }
-
-                    // Delete card (items akan cascade delete)
                     cardRepository.deleteCard(cardId)
                     _snackbarEvent.emit(SnackbarEvent.Success("Card berhasil dihapus"))
                 }
@@ -390,9 +317,6 @@ class CardDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Toggle item selection
-     */
     fun toggleItemSelection(itemId: String) {
         _selectedItems.value = if (_selectedItems.value.contains(itemId)) {
             _selectedItems.value - itemId
@@ -401,111 +325,54 @@ class CardDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Clear all selections
-     */
     fun clearSelection() {
         _selectedItems.value = emptySet()
     }
 
-    /**
-     * Delete selected items
-     */
     fun deleteSelectedItems() {
         viewModelScope.launch {
             var successCount = 0
-            var failCount = 0
-
             _selectedItems.value.forEach { itemId ->
                 try {
-                    val result = checklistRepository.deleteItem(itemId)
-                    if (result) successCount++ else failCount++
-                } catch (e: Exception) {
-                    failCount++
-                }
+                    if (checklistRepository.deleteItem(itemId)) successCount++
+                } catch (e: Exception) {}
             }
-
             clearSelection()
-
-            if (successCount > 0) {
-                _snackbarEvent.emit(
-                    SnackbarEvent.Success("$successCount item berhasil dihapus")
-                )
-            }
-            if (failCount > 0) {
-                _snackbarEvent.emit(
-                    SnackbarEvent.Error("$failCount item gagal dihapus")
-                )
-            }
+            if (successCount > 0) _snackbarEvent.emit(SnackbarEvent.Success("$successCount item berhasil dihapus"))
         }
     }
 
-    /**
-     * Tandai items yang dipilih sebagai selesai
-     */
     fun markSelectedItemsAsCompleted() {
         viewModelScope.launch {
             _selectedItems.value.forEach { itemId ->
                 try {
-                    val item = (_uiState.value as? CardDetailUiState.Success)
-                        ?.cardWithItems?.items?.find { it.id == itemId }
-                    if (item != null) {
-                        onEvent(
-                            CardDetailUiEvent.ChecklistItemStatusChanged(itemId, true)
-                        )
-                    }
-                } catch (e: Exception) {
-                    _snackbarEvent.emit(
-                        SnackbarEvent.Error("Gagal tandai selesai")
-                    )
-                }
+                    val item = (_uiState.value as? CardDetailUiState.Success)?.cardWithItems?.items?.find { it.id == itemId }
+                    if (item != null) onEvent(CardDetailUiEvent.ChecklistItemStatusChanged(itemId, true))
+                } catch (e: Exception) {}
             }
             clearSelection()
             _snackbarEvent.emit(SnackbarEvent.Success("Items ditandai selesai"))
         }
     }
 
-    /**
-     * Update new item name input
-     */
     fun updateNewItemName(name: String) {
         _newItemName.value = name
     }
 
-    /**
-     * Add new item inline
-     */
     fun addNewItemInline() {
-        if (_newItemName.value.isBlank()) {
-            viewModelScope.launch {
-                _snackbarEvent.emit(SnackbarEvent.Error("Nama item tidak boleh kosong"))
-            }
-            return
-        }
-
+        if (_newItemName.value.isBlank()) return
         _currentCardId.value?.let { cardId ->
-            // Create new checklist item
             val newItem = ChecklistItem(
                 id = UUID.randomUUID().toString(),
                 cardId = cardId,
                 itemName = _newItemName.value,
-                isChecked = false,
-                deadline = null,
-                notificationTime = null,
-                notificationMinutesBefore = 30,
-                isNotificationEnabled = false,
-                position = 0,
                 createdAt = LocalDateTime.now()
             )
-
             onEvent(CardDetailUiEvent.AddItem(newItem))
-            _newItemName.value = "" // Clear input after add
+            _newItemName.value = ""
         }
     }
 
-    /**
-     * Reorder items
-     */
     fun reorderItems(fromIndex: Int, toIndex: Int) {
         viewModelScope.launch {
             try {
@@ -514,99 +381,57 @@ class CardDetailViewModel @Inject constructor(
                     val items = currentState.cardWithItems.items.toMutableList()
                     val item = items.removeAt(fromIndex)
                     items.add(toIndex, item)
-
-                    // Update positions
                     items.forEachIndexed { index, checklistItem ->
                         checklistRepository.updateItemPosition(checklistItem.id, index)
                     }
-
-                    _currentCardId.value?.let { loadCardDetail(it) }
                 }
-            } catch (e: Exception) {
-                _snackbarEvent.emit(SnackbarEvent.Error("Gagal mengatur ulang item"))
-            }
+            } catch (e: Exception) {}
         }
     }
 
-    /**
-     * Refresh card detail
-     */
     private fun refreshCardDetail() {
         _currentCardId.value?.let { loadCardDetail(it) }
     }
 
-    /**
-     * Add new item dengan detail lengkap dari bottom sheet
-     */
     fun addNewItemWithDetails(
-        itemName: String,
-        deadline: java.time.LocalDate?,
-        notificationTime: java.time.LocalTime?,
-        isNotificationEnabled: Boolean,
-        notificationMinutesBefore: Int
+        itemName: String, deadline: java.time.LocalDate?, notificationTime: java.time.LocalTime?, isNotificationEnabled: Boolean, notificationMinutesBefore: Int
     ) {
-        if (itemName.isBlank()) {
-            viewModelScope.launch {
-                _snackbarEvent.emit(SnackbarEvent.Error("Nama item tidak boleh kosong"))
-            }
-            return
-        }
-
+        if (itemName.isBlank()) return
         _currentCardId.value?.let { cardId ->
             val newItem = ChecklistItem(
-                id = UUID.randomUUID().toString(),
-                cardId = cardId,
-                itemName = itemName,
-                isChecked = false,
-                deadline = deadline,
-                notificationTime = notificationTime,
-                notificationMinutesBefore = notificationMinutesBefore,
-                isNotificationEnabled = isNotificationEnabled,
-                position = 0,
-                createdAt = LocalDateTime.now()
+                id = UUID.randomUUID().toString(), cardId = cardId, itemName = itemName, deadline = deadline, notificationTime = notificationTime, notificationMinutesBefore = notificationMinutesBefore, isNotificationEnabled = isNotificationEnabled, createdAt = LocalDateTime.now()
             )
-
             onEvent(CardDetailUiEvent.AddItem(newItem))
         }
     }
 
-    /**
-     * Add new item dengan interface yang disederhanakan
-     * - itemName: nama task
-     * - deadlineDate: tanggal deadline (opsional)
-     * - deadlineTime: jam deadline (opsional)
-     * - reminderMinutesBefore: berapa menit sebelum deadline reminder (null = tidak ada reminder)
-     */
     fun addNewItemSimple(
-        itemName: String,
-        deadlineDate: java.time.LocalDate?,
-        deadlineTime: java.time.LocalTime?,
-        reminderMinutesBefore: Int?
+        itemName: String, deadlineDate: java.time.LocalDate?, deadlineTime: java.time.LocalTime?, reminderMinutesBefore: Int?
     ) {
-        if (itemName.isBlank()) {
-            viewModelScope.launch {
-                _snackbarEvent.emit(SnackbarEvent.Error("Nama item tidak boleh kosong"))
-            }
-            return
-        }
-
+        if (itemName.isBlank()) return
         _currentCardId.value?.let { cardId ->
             val isNotificationEnabled = reminderMinutesBefore != null && deadlineDate != null
-
             val newItem = ChecklistItem(
-                id = UUID.randomUUID().toString(),
-                cardId = cardId,
-                itemName = itemName,
-                isChecked = false,
-                deadline = deadlineDate,
-                notificationTime = deadlineTime,
-                notificationMinutesBefore = reminderMinutesBefore ?: 30,
-                isNotificationEnabled = isNotificationEnabled,
-                position = 0,
-                createdAt = LocalDateTime.now()
+                id = UUID.randomUUID().toString(), cardId = cardId, itemName = itemName, deadline = deadlineDate, notificationTime = deadlineTime, notificationMinutesBefore = reminderMinutesBefore ?: 30, isNotificationEnabled = isNotificationEnabled, createdAt = LocalDateTime.now()
             )
-
             onEvent(CardDetailUiEvent.AddItem(newItem))
+        }
+    }
+
+    fun updateItemSimple(
+        itemId: String, itemName: String, deadlineDate: java.time.LocalDate?, deadlineTime: java.time.LocalTime?, reminderMinutesBefore: Int?
+    ) {
+        if (itemName.isBlank()) return
+        val currentState = _uiState.value
+        if (currentState is CardDetailUiState.Success && currentState.cardWithItems != null) {
+            val existingItem = currentState.cardWithItems.items.find { it.id == itemId }
+            if (existingItem != null) {
+                val isNotificationEnabled = reminderMinutesBefore != null && deadlineDate != null
+                val updatedItem = existingItem.copy(
+                    itemName = itemName, deadline = deadlineDate, notificationTime = deadlineTime, notificationMinutesBefore = reminderMinutesBefore ?: 30, isNotificationEnabled = isNotificationEnabled
+                )
+                onEvent(CardDetailUiEvent.UpdateItem(updatedItem))
+            }
         }
     }
 }

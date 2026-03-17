@@ -18,8 +18,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.jasawira.donezo.presentation.screen.HomeScreenRedesign
-import com.jasawira.donezo.presentation.screen.CardDetailScreenRedesign
+import com.jasawira.donezo.presentation.screen.CardDetailScreen
+import com.jasawira.donezo.presentation.screen.HomeScreen
 import com.jasawira.donezo.presentation.screen.SettingsScreen
 import com.jasawira.donezo.presentation.splash.SplashScreen
 
@@ -41,8 +41,7 @@ object NavigationRoutes {
  */
 @Composable
 fun ChecklistAppNavGraph(
-    navController: NavHostController = rememberNavController(),
-    onThemeChange: (String) -> Unit = {}
+    navController: NavHostController = rememberNavController()
 ) {
     NavHost(
         navController = navController,
@@ -61,7 +60,7 @@ fun ChecklistAppNavGraph(
 
         // HOME SCREEN
         composable(NavigationRoutes.HOME) {
-            HomeScreenRedesign(
+            HomeScreen(
                 onCardClick = { cardId ->
                     navController.navigate(NavigationRoutes.cardDetailRoute(cardId))
                 },
@@ -77,7 +76,7 @@ fun ChecklistAppNavGraph(
         // CARD DETAIL SCREEN
         composable(NavigationRoutes.CARD_DETAIL) { backStackEntry ->
             val cardId = backStackEntry.arguments?.getString("cardId") ?: ""
-            CardDetailScreenRedesign(
+            CardDetailScreen(
                 cardId = cardId,
                 onBackClick = {
                     navController.popBackStack()
@@ -99,8 +98,7 @@ fun ChecklistAppNavGraph(
             SettingsScreen(
                 onBackClick = {
                     navController.popBackStack()
-                },
-                onThemeChange = onThemeChange
+                }
             )
         }
     }

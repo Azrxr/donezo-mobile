@@ -13,20 +13,11 @@ import androidx.compose.ui.platform.LocalContext
  */
 @Composable
 fun DonezoTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        darkTheme -> DarkColors
-        else -> LightColors
-    }
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = LightColors,
         typography = AppTypography,
         content = content
     )
 }
-
-

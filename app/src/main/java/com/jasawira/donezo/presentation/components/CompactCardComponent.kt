@@ -1,13 +1,11 @@
 package com.jasawira.donezo.presentation.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
-import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,7 +19,7 @@ import com.jasawira.donezo.presentation.theme.ColorPresets
 
 /**
  * CompactCardComponent
- * Card design baru sesuai gambar dengan max 3 items visible
+ * Card design untuk Home Screen (Mode Read-Only / Preview)
  */
 @Composable
 fun CompactCardComponent(
@@ -31,9 +29,9 @@ fun CompactCardComponent(
     colorPresetId: Int = 0,
     completedCount: Int = 0,
     totalCount: Int = 0,
-    items: List<ChecklistItemPreview> = emptyList(),
-    onCardClick: () -> Unit = {},
-    onItemCheckChange: (String, Boolean) -> Unit = { _, _ -> }
+    items: List<ChecklistItemPreview> = emptyList()
+    // Parameter onCardClick dan onItemCheckChange DIBUANG
+    // karena interaksi sentuhan sepenuhnya di-handle oleh EditableCardWrapper di luar
 ) {
     val preset = ColorPresets.getPresetById(colorPresetId)
 
@@ -42,16 +40,13 @@ fun CompactCardComponent(
     val accentColor = preset.primaryColor
     val textColor = preset.textColor
 
-
     val progress = if (totalCount > 0) {
         completedCount.toFloat() / totalCount
     } else 0f
 
+    // Card tidak memiliki clickable lagi di sini agar tidak konflik dengan Wrapper di luar
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp)
-            .clickable { onCardClick() },
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -91,17 +86,14 @@ fun CompactCardComponent(
                 color = textColor
             )
 
-            // 🔹 ITEMS
+            // 🔹 ITEMS (Mode Preview, Murni pajangan tanpa klik)
             if (items.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items.take(3).forEach { item ->
                         ChecklistItemRow(
                             item = item,
                             contentColor = contentColor,
-                            accentColor = accentColor,
-                            onCheckChange = {
-                                onItemCheckChange(item.id, !item.isChecked)
-                            }
+                            accentColor = accentColor
                         )
                     }
                 }
@@ -163,19 +155,17 @@ fun CategoryChip(
 }
 
 /**
- * Checklist Item Row dalam card
+ * Checklist Item Row dalam card (Murni Preview)
  */
 @Composable
 fun ChecklistItemRow(
     item: ChecklistItemPreview,
     contentColor: Color,
-    accentColor: Color,
-    onCheckChange: () -> Unit
+    accentColor: Color
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onCheckChange() },
+        // PENTING: Modifier .clickable dihapus total dari sini!
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

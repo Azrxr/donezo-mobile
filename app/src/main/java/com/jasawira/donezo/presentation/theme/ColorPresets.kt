@@ -1,5 +1,7 @@
 package com.jasawira.donezo.presentation.theme
 
+import androidx.compose.material3.contentColorFor
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 /**
@@ -151,5 +153,19 @@ object ColorPresets {
     fun getPresetById(id: Int): ColorPreset {
         return allPresets.find { it.id == id } ?: pastelBlue // default ke blue
     }
+}
+
+// Top-level helpers (lebih mudah dipanggil dari composable lain)
+@Composable
+fun ColorPreset.contentColor(): Color {
+    return contentColorFor(backgroundColor)
+}
+
+fun ColorPreset.softBackground(): Color {
+    return backgroundColor.copy(alpha = 0.9f)
+}
+
+fun ColorPreset.borderColor(): Color {
+    return primaryColor.copy(alpha = 0.3f)
 }
 

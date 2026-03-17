@@ -1,3 +1,8 @@
+Card → “Daftar” / “Rencana” / “Rutinitas”
+
+Checklist item → “Langkah” / “Tugas kecil”
+
+
 # 📋 Checklist Manager App
 
 Aplikasi Android untuk manajemen checklist berbasis card dengan fitur notifikasi, drag-drop reorder, dan UI yang indah.
