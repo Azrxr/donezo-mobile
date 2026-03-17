@@ -53,11 +53,10 @@ fun ItemBottomSheet(
     ) -> Unit = { _, _, _, _ -> },
     buttonColor: Color = Color(0xFF26D3C8)
 ) {
-    var itemName by remember { mutableStateOf(initialName) }
-    var selectedDate by remember { mutableStateOf(initialDate) }
-    var selectedTime by remember { mutableStateOf(initialTime) }
-    var selectedReminderMinutes by remember { mutableStateOf(initialReminderMinutes) }
-
+    var itemName by remember(initialName) { mutableStateOf(initialName) }
+    var selectedDate by remember(initialDate) { mutableStateOf(initialDate) }
+    var selectedTime by remember(initialTime) { mutableStateOf(initialTime) }
+    var selectedReminderMinutes by remember(initialReminderMinutes) { mutableStateOf(initialReminderMinutes) }
     // Date Picker State (Gunakan UTC agar tanggal tidak bergeser karena Timezone lokal)
     var showDatePicker by remember { mutableStateOf(false) }
     val initialDateMillis = remember(initialDate) {
@@ -120,7 +119,9 @@ fun ItemBottomSheet(
                     unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
                     cursorColor = buttonColor
                 ),
-                singleLine = true,
+                singleLine = false,
+                minLines = 1,
+                maxLines = 3,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
             )
 

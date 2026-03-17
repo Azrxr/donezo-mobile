@@ -12,9 +12,7 @@ import com.jasawira.donezo.data.local.entity.CardEntity
 import com.jasawira.donezo.data.local.entity.CategoryEntity
 import com.jasawira.donezo.data.local.entity.ChecklistItemEntity
 import com.jasawira.donezo.utils.DateTimeConverters
-import androidx.room.RoomDatabase.Callback
-import java.time.LocalDateTime
-import java.util.UUID
+
 
 /**
  * Room Database Configuration
@@ -24,7 +22,7 @@ import java.util.UUID
  * - CardEntity: Menyimpan card project
  * - ChecklistItemEntity: Menyimpan checklist items
  *
- * Version: 1
+ * Version: 2
  * - Bisa di-increment jika ada migration
  *
  * TypeConverters: Untuk handle LocalDateTime, LocalDate, LocalTime
@@ -67,28 +65,8 @@ abstract class AppDatabase : RoomDatabase() {
                 AppDatabase::class.java,
                 DATABASE_NAME
             )
-                .addCallback(object : Callback() {
-                    override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                        super.onCreate(db)
-                        
-                        val now = LocalDateTime.now().toString()
-                        val defaultCategories = arrayOf(
-                            arrayOf("uncategorized_default", "Uncategorized", now),
-                            arrayOf(UUID.randomUUID().toString(), "Work", now),
-                            arrayOf(UUID.randomUUID().toString(), "Personal", now),
-                            arrayOf(UUID.randomUUID().toString(), "Shopping", now),
-                            arrayOf(UUID.randomUUID().toString(), "Health", now),
-                            arrayOf(UUID.randomUUID().toString(), "Learning", now)
-                        )
-
-                        defaultCategories.forEach { category ->
-                            db.execSQL(
-                                "INSERT INTO categories (id, name, createdAt) VALUES (?, ?, ?)",
-                                category
-                            )
-                        }
-                    }
-                })
+                // Callback SQL dihapus karena inisialisasi awal (Onboarding)
+                // sekarang dikendalikan secara rapi melalui HomeViewModel menggunakan Kotlin Objects
                 .fallbackToDestructiveMigration()
                 .build()
         }
@@ -105,4 +83,3 @@ abstract class AppDatabase : RoomDatabase() {
         }
     }
 }
-

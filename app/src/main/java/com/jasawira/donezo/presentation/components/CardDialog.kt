@@ -109,7 +109,9 @@ fun CardDialog(
                     unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
                     cursorColor = buttonColor
                 ),
-                singleLine = true,
+                singleLine = false,
+                minLines = 1,
+                maxLines = 3,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                 trailingIcon = {
                     if (cardName.isNotEmpty()) {
