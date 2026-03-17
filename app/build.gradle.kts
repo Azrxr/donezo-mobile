@@ -14,7 +14,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 2
-        versionName = "1.5.0"
+        versionName = "1.5.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -29,14 +29,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Enable debug symbols untuk Play Store
             isDebuggable = false
             ndk {
                 debugSymbolLevel = "FULL"
             }
         }
         debug {
-            isMinifyEnabled = false
+            isMinifyEnabled = false // <--- KEMBALIKAN KE FALSE
             ndk {
                 debugSymbolLevel = "FULL"
             }
